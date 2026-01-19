@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Tab - Yarvix</title>
+    <title>New Tab</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
@@ -261,6 +261,7 @@
             color: var(--text-primary);
             transition: all 0.2s ease;
             min-width: 100px;
+            cursor: pointer;
         }
 
         .quick-link:hover {
@@ -532,27 +533,27 @@
     </div>
 
     <!-- Quick Links -->
-    <div class="quick-links">
-        <a href="https://google.com" class="quick-link">
+    <div class="quick-links" id="quick-links">
+        <div class="quick-link" data-url="https://google.com">
             <div class="quick-link-icon google"><i class="fab fa-google"></i></div>
             <span>Google</span>
-        </a>
-        <a href="https://youtube.com" class="quick-link">
+        </div>
+        <div class="quick-link" data-url="https://youtube.com">
             <div class="quick-link-icon youtube"><i class="fab fa-youtube"></i></div>
             <span>YouTube</span>
-        </a>
-        <a href="https://github.com" class="quick-link">
+        </div>
+        <div class="quick-link" data-url="https://github.com">
             <div class="quick-link-icon github"><i class="fab fa-github"></i></div>
             <span>GitHub</span>
-        </a>
-        <a href="https://twitter.com" class="quick-link">
+        </div>
+        <div class="quick-link" data-url="https://twitter.com">
             <div class="quick-link-icon twitter"><i class="fab fa-twitter"></i></div>
             <span>Twitter</span>
-        </a>
-        <a href="https://reddit.com" class="quick-link">
+        </div>
+        <div class="quick-link" data-url="https://reddit.com">
             <div class="quick-link-icon reddit"><i class="fab fa-reddit-alien"></i></div>
             <span>Reddit</span>
-        </a>
+        </div>
     </div>
 
     <!-- Date Time -->
@@ -608,6 +609,19 @@
     </div>
 
     <script>
+        // Check if we're in Electron webview
+        const isElectron = typeof require !== 'undefined';
+        let ipcRenderer = null;
+
+        if (isElectron) {
+            try {
+                const { ipcRenderer: ipc } = require('electron');
+                ipcRenderer = ipc;
+            } catch (e) {
+                console.log('IPC not available');
+            }
+        }
+
         // State
         let currentEngine = {
             name: 'Google',
@@ -629,7 +643,13 @@
         const searchEngineSelect = document.getElementById('search-engine-select');
         const bookmarksToggle = document.getElementById('bookmarks-toggle');
 
-        // Load saved settings
+        // Send message to parent browser via console.log (webview listens to console-message)
+        function sendToBrowser(action, data) {
+            // Log as JSON so the browser can parse it from console-message event
+            console.log(JSON.stringify({ type: 'homepage-action', action, data }));
+        }
+
+        // Load saved settings from localStorage (shared with browser)
         function loadSettings() {
             const savedEngine = localStorage.getItem('searchEngine') || 'https://www.google.com/search?q=';
             const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -639,6 +659,9 @@
             if (savedTheme === 'light') {
                 document.body.classList.add('light-theme');
                 themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                document.body.classList.remove('light-theme');
+                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
             }
             themeSelect.value = savedTheme;
 
@@ -649,6 +672,8 @@
             // Apply bookmarks toggle
             if (showBookmarks) {
                 bookmarksToggle.classList.add('active');
+            } else {
+                bookmarksToggle.classList.remove('active');
             }
         }
 
@@ -672,7 +697,7 @@
             });
         }
 
-        // Search functionality
+        // Search functionality - navigate in current webview
         function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
@@ -682,13 +707,15 @@
                           query.startsWith('localhost') ||
                           /^(\d{1,3}\.){3}\d{1,3}/.test(query);
 
+            let targetUrl;
             if (isUrl) {
-                let url = query;
-                if (!url.startsWith('http')) url = 'https://' + url;
-                window.location.href = url;
+                targetUrl = query.startsWith('http') ? query : 'https://' + query;
             } else {
-                window.location.href = currentEngine.url + encodeURIComponent(query);
+                targetUrl = currentEngine.url + encodeURIComponent(query);
             }
+
+            // Navigate using window.location (webview will handle this)
+            window.location.href = targetUrl;
         }
 
         // Event Listeners
@@ -712,10 +739,8 @@
                 localStorage.setItem('searchEngine', url);
                 engineDropdown.classList.remove('show');
 
-                // Notify parent window
-                if (window.parent !== window) {
-                    window.parent.postMessage({ type: 'setting-changed', key: 'searchEngine', value: url }, '*');
-                }
+                // Notify browser to sync
+                sendToBrowser('setting-changed', { key: 'searchEngine', value: url });
             });
         });
 
@@ -726,9 +751,22 @@
                 const engines = ['https://www.google.com/search?q=', 'https://duckduckgo.com/?q=', 'https://www.bing.com/search?q='];
                 const currentIndex = engines.indexOf(currentEngine.url);
                 const nextIndex = (currentIndex + 1) % engines.length;
-                updateSearchEngine(engines[nextIndex]);
-                localStorage.setItem('searchEngine', engines[nextIndex]);
+                const newEngine = engines[nextIndex];
+                updateSearchEngine(newEngine);
+                localStorage.setItem('searchEngine', newEngine);
+                sendToBrowser('setting-changed', { key: 'searchEngine', value: newEngine });
             }
+        });
+
+        // Quick links - navigate on click
+        document.querySelectorAll('.quick-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const url = link.dataset.url;
+                if (url) {
+                    window.location.href = url;
+                }
+            });
         });
 
         // Settings panel toggle
@@ -744,11 +782,7 @@
             themeToggle.innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
             themeSelect.value = theme;
             localStorage.setItem('theme', theme);
-
-            // Notify parent window
-            if (window.parent !== window) {
-                window.parent.postMessage({ type: 'setting-changed', key: 'theme', value: theme }, '*');
-            }
+            sendToBrowser('setting-changed', { key: 'theme', value: theme });
         });
 
         // Theme select
@@ -757,20 +791,14 @@
             document.body.classList.toggle('light-theme', theme === 'light');
             themeToggle.innerHTML = theme === 'light' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
             localStorage.setItem('theme', theme);
-
-            if (window.parent !== window) {
-                window.parent.postMessage({ type: 'setting-changed', key: 'theme', value: theme }, '*');
-            }
+            sendToBrowser('setting-changed', { key: 'theme', value: theme });
         });
 
         // Search engine select
         searchEngineSelect.addEventListener('change', (e) => {
             updateSearchEngine(e.target.value);
             localStorage.setItem('searchEngine', e.target.value);
-
-            if (window.parent !== window) {
-                window.parent.postMessage({ type: 'setting-changed', key: 'searchEngine', value: e.target.value }, '*');
-            }
+            sendToBrowser('setting-changed', { key: 'searchEngine', value: e.target.value });
         });
 
         // Bookmarks toggle
@@ -778,10 +806,7 @@
             bookmarksToggle.classList.toggle('active');
             const show = bookmarksToggle.classList.contains('active');
             localStorage.setItem('showBookmarksBar', show);
-
-            if (window.parent !== window) {
-                window.parent.postMessage({ type: 'setting-changed', key: 'showBookmarksBar', value: show }, '*');
-            }
+            sendToBrowser('setting-changed', { key: 'showBookmarksBar', value: show });
         });
 
         // Close dropdowns on outside click
@@ -807,11 +832,18 @@
         updateDateTime();
         setInterval(updateDateTime, 1000);
 
+        // Listen for settings sync from browser
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'sync-settings') {
+                loadSettings();
+            }
+        });
+
         // Load settings on start
         loadSettings();
 
         // Focus search input
-        searchInput.focus();
+        setTimeout(() => searchInput.focus(), 100);
     </script>
 </body>
 </html>

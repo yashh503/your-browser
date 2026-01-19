@@ -107,6 +107,11 @@ class TabManager {
 
         document.getElementById('webview-container').appendChild(webview);
 
+        // Setup webview listeners for homepage communication
+        if (window.setupWebviewListeners) {
+            window.setupWebviewListeners(webview);
+        }
+
         // Create Tab UI
         const tabElement = document.createElement('div');
         tabElement.className = 'tab active';
@@ -724,6 +729,83 @@ document.addEventListener('DOMContentLoaded', () => {
         tabManager.getActiveWebview()?.stopFindInPage('clearSelection');
     });
 
+    // Listen for keyboard shortcuts from main process (works even when webview has focus)
+    ipcRenderer.on('browser-shortcut', (_event, { key, cmdOrCtrl, shift }) => {
+        // Cmd/Ctrl + T - New Tab
+        if (cmdOrCtrl && key === 't' && !shift) {
+            tabManager.createTab(settings.homePage);
+        }
+
+        // Cmd/Ctrl + W - Close Tab
+        if (cmdOrCtrl && key === 'w') {
+            if (activeTabId !== null) {
+                tabManager.closeTab(activeTabId);
+            }
+        }
+
+        // Cmd/Ctrl + Shift + T - Reopen Last Closed Tab
+        if (cmdOrCtrl && shift && key === 't') {
+            if (recentlyClosedTabs.length > 0) {
+                const lastClosed = recentlyClosedTabs.pop();
+                tabManager.createTab(lastClosed.url);
+            }
+        }
+
+        // Cmd/Ctrl + R - Refresh Page
+        if (cmdOrCtrl && key === 'r' && !shift) {
+            tabManager.getActiveWebview()?.reload();
+        }
+
+        // Cmd/Ctrl + L - Focus URL Bar
+        if (cmdOrCtrl && key === 'l') {
+            const urlInput = document.getElementById('url-input');
+            urlInput.focus();
+            urlInput.select();
+        }
+
+        // Cmd/Ctrl + N - New Window
+        if (cmdOrCtrl && key === 'n') {
+            ipcRenderer.send('create-new-window');
+        }
+
+        // Cmd/Ctrl + D - Bookmark
+        if (cmdOrCtrl && key === 'd') {
+            document.getElementById('bookmark-btn').click();
+        }
+
+        // Cmd/Ctrl + F - Find in page
+        if (cmdOrCtrl && key === 'f') {
+            document.getElementById('find-bar').classList.remove('hidden');
+            document.getElementById('find-input').focus();
+        }
+
+        // Cmd/Ctrl + Tab - Next Tab
+        if (cmdOrCtrl && key === 'tab' && !shift) {
+            const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+            const nextIndex = (currentIndex + 1) % tabs.length;
+            if (tabs[nextIndex]) {
+                tabManager.switchTab(tabs[nextIndex].id);
+            }
+        }
+
+        // Cmd/Ctrl + Shift + Tab - Previous Tab
+        if (cmdOrCtrl && shift && key === 'tab') {
+            const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+            const prevIndex = currentIndex === 0 ? tabs.length - 1 : currentIndex - 1;
+            if (tabs[prevIndex]) {
+                tabManager.switchTab(tabs[prevIndex].id);
+            }
+        }
+
+        // Cmd/Ctrl + 1-9 - Switch to Tab
+        if (cmdOrCtrl && key >= '1' && key <= '9') {
+            const tabIndex = parseInt(key) - 1;
+            if (tabs[tabIndex]) {
+                tabManager.switchTab(tabs[tabIndex].id);
+            }
+        }
+    });
+
     // Screen capture overlay
     const captureOverlay = document.getElementById('capture-overlay');
     const captureTitle = document.getElementById('capture-overlay-title');
@@ -801,38 +883,63 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHistory();
     renderBookmarks();
 
-    // Listen for settings changes from homepage
-    window.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'setting-changed') {
-            const { key, value } = event.data;
-
-            if (key === 'theme') {
-                settings.theme = value;
-                localStorage.setItem('theme', value);
-                applyTheme(value);
-            } else if (key === 'searchEngine') {
-                settings.searchEngine = value;
-                localStorage.setItem('searchEngine', value);
-                // Update title bar engine switcher
-                const engineSelect = document.getElementById('engine-select');
-                const engineIcon = document.getElementById('active-engine-icon');
-                if (engineSelect) engineSelect.value = value;
-                if (engineIcon) {
-                    if (value.includes('google.com')) {
-                        engineIcon.innerHTML = '<i class="fab fa-google"></i>';
-                    } else if (value.includes('duckduckgo')) {
-                        engineIcon.innerHTML = '<i class="fas fa-mask"></i>';
-                    } else if (value.includes('bing')) {
-                        engineIcon.innerHTML = '<i class="fab fa-microsoft"></i>';
-                    }
-                }
-            } else if (key === 'showBookmarksBar') {
-                settings.showBookmarksBar = value;
-                localStorage.setItem('showBookmarksBar', value);
-                document.getElementById('bookmarks-bar').style.display = value ? 'flex' : 'none';
-            }
+    // Listen for settings changes from homepage webview
+    // Webviews use console-message event to communicate
+    tabs.forEach(tab => {
+        if (tab.webview) {
+            setupWebviewListeners(tab.webview);
         }
     });
+
+    function setupWebviewListeners(webview) {
+        // Listen for IPC messages from webview
+        webview.addEventListener('ipc-message', (event) => {
+            if (event.channel === 'setting-changed') {
+                handleSettingChange(event.args[0]);
+            }
+        });
+
+        // Also listen for console messages as fallback for postMessage
+        webview.addEventListener('console-message', (event) => {
+            try {
+                if (event.message.includes('homepage-action')) {
+                    const data = JSON.parse(event.message);
+                    if (data.action === 'setting-changed') {
+                        handleSettingChange(data.data);
+                    }
+                }
+            } catch (e) {
+                // Ignore non-JSON messages
+            }
+        });
+
+        // Keyboard shortcuts are now handled globally by main.js via web-contents-created
+        // This ensures shortcuts work even when focus is inside a webview
+    }
+
+    function handleSettingChange(data) {
+        const { key, value } = data;
+
+        if (key === 'theme') {
+            settings.theme = value;
+            localStorage.setItem('theme', value);
+            applyTheme(value);
+        } else if (key === 'searchEngine') {
+            settings.searchEngine = value;
+            localStorage.setItem('searchEngine', value);
+            // Update title bar engine switcher
+            const engineSelectEl = document.getElementById('engine-select');
+            if (engineSelectEl) engineSelectEl.value = value;
+            updateEngineUI(value);
+        } else if (key === 'showBookmarksBar') {
+            settings.showBookmarksBar = value;
+            localStorage.setItem('showBookmarksBar', value);
+            document.getElementById('bookmarks-bar').style.display = value ? 'flex' : 'none';
+        }
+    }
+
+    // Make setupWebviewListeners available globally for new tabs
+    window.setupWebviewListeners = setupWebviewListeners;
 
     // Click outside to close panels
     document.addEventListener('click', (e) => {

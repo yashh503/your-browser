@@ -153,6 +153,44 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
+  // Handle keyboard shortcuts at the main window level
+  // This ensures shortcuts work even when focus is inside a webview
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+
+    const cmdOrCtrl = input.meta || input.control;
+    const shift = input.shift;
+    const key = input.key.toLowerCase();
+
+    // Define shortcuts that should be handled by the renderer
+    const browserShortcuts = [
+      { keys: ['t'], cmdCtrl: true, shift: false },  // New tab
+      { keys: ['w'], cmdCtrl: true, shift: false },  // Close tab
+      { keys: ['t'], cmdCtrl: true, shift: true },   // Reopen closed tab
+      { keys: ['r'], cmdCtrl: true, shift: false },  // Refresh
+      { keys: ['l'], cmdCtrl: true, shift: false },  // Focus URL bar
+      { keys: ['d'], cmdCtrl: true, shift: false },  // Bookmark
+      { keys: ['f'], cmdCtrl: true, shift: false },  // Find
+      { keys: ['n'], cmdCtrl: true, shift: false },  // New window
+      { keys: ['tab'], cmdCtrl: true, shift: false }, // Next tab
+      { keys: ['tab'], cmdCtrl: true, shift: true },  // Previous tab
+      { keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9'], cmdCtrl: true, shift: false }, // Switch to tab
+    ];
+
+    for (const shortcut of browserShortcuts) {
+      const keyMatches = shortcut.keys.includes(key);
+      const cmdCtrlMatches = shortcut.cmdCtrl === cmdOrCtrl;
+      const shiftMatches = shortcut.shift === shift;
+
+      if (keyMatches && cmdCtrlMatches && shiftMatches) {
+        // Send the shortcut to the renderer process to handle
+        mainWindow.webContents.send('browser-shortcut', { key, cmdOrCtrl, shift });
+        event.preventDefault();
+        return;
+      }
+    }
+  });
+
   // --- DOWNLOAD MANAGER LOGIC ---
   // Handle downloads from main window
   setupDownloadHandler(mainWindow.webContents.session);
@@ -163,6 +201,52 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   createWindow();
+
+  // Listen for keyboard shortcuts from ALL webContents (including webviews)
+  // This is the reliable way to capture shortcuts when focus is inside a webview
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown') return;
+
+      const cmdOrCtrl = input.meta || input.control;
+      const shift = input.shift;
+      const key = input.key.toLowerCase();
+
+      // Define browser shortcuts
+      const shortcuts = [
+        { key: 't', cmdCtrl: true, shift: false },
+        { key: 'w', cmdCtrl: true, shift: false },
+        { key: 't', cmdCtrl: true, shift: true },
+        { key: 'r', cmdCtrl: true, shift: false },
+        { key: 'l', cmdCtrl: true, shift: false },
+        { key: 'd', cmdCtrl: true, shift: false },
+        { key: 'f', cmdCtrl: true, shift: false },
+        { key: 'n', cmdCtrl: true, shift: false },
+        { key: 'tab', cmdCtrl: true, shift: false },
+        { key: 'tab', cmdCtrl: true, shift: true },
+        { key: '1', cmdCtrl: true, shift: false },
+        { key: '2', cmdCtrl: true, shift: false },
+        { key: '3', cmdCtrl: true, shift: false },
+        { key: '4', cmdCtrl: true, shift: false },
+        { key: '5', cmdCtrl: true, shift: false },
+        { key: '6', cmdCtrl: true, shift: false },
+        { key: '7', cmdCtrl: true, shift: false },
+        { key: '8', cmdCtrl: true, shift: false },
+        { key: '9', cmdCtrl: true, shift: false },
+      ];
+
+      for (const shortcut of shortcuts) {
+        if (key === shortcut.key && cmdOrCtrl === shortcut.cmdCtrl && shift === shortcut.shift) {
+          // Send to the main window's renderer
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('browser-shortcut', { key, cmdOrCtrl, shift });
+            event.preventDefault();
+          }
+          return;
+        }
+      }
+    });
+  });
   
   // Clear corrupted service worker data immediately on startup
   // This helps prevent the "Failed to delete the database: Database IO error" issue
