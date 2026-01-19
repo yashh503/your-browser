@@ -1,0 +1,937 @@
+/* ========================================
+   DuckBrowser - Chrome-like Modern Design
+   ======================================== */
+
+:root {
+    /* Light Theme (Default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f1f3f4;
+    --bg-tertiary: #e8eaed;
+    --bg-tab-bar: #dee1e6;
+    --bg-tab-active: #ffffff;
+    --bg-tab-hover: #f1f3f4;
+    --text-primary: #202124;
+    --text-secondary: #5f6368;
+    --border-color: #dadce0;
+    --accent-color: #1a73e8;
+    --accent-hover: #1557b0;
+    --url-bar-bg: #f1f3f4;
+    --url-bar-focus: #ffffff;
+    --shadow-light: rgba(0, 0, 0, 0.1);
+    --shadow-medium: rgba(0, 0, 0, 0.15);
+    --success-color: #34a853;
+    --warning-color: #fbbc04;
+    --error-color: #ea4335;
+}
+
+body.dark-theme {
+    --bg-primary: #202124;
+    --bg-secondary: #292a2d;
+    --bg-tertiary: #35363a;
+    --bg-tab-bar: #202124;
+    --bg-tab-active: #35363a;
+    --bg-tab-hover: #3c4043;
+    --text-primary: #e8eaed;
+    --text-secondary: #9aa0a6;
+    --border-color: #3c4043;
+    --url-bar-bg: #35363a;
+    --url-bar-focus: #3c4043;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   Title Bar & Tabs (macOS traffic lights area)
+   ======================================== */
+#title-bar {
+    background: var(--bg-tab-bar);
+    display: flex;
+    align-items: center;
+    padding: 8px 8px 8px 80px; /* 80px left padding for macOS traffic lights */
+    height: 44px;
+    -webkit-app-region: drag;
+    user-select: none;
+}
+
+#tabs-container {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-app-region: no-drag;
+}
+
+#tabs-container::-webkit-scrollbar {
+    height: 0;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    min-width: 140px;
+    max-width: 200px;
+    height: 32px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    margin-right: 4px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+    -webkit-app-region: no-drag;
+}
+
+.tab:hover {
+    background: var(--bg-tab-hover);
+}
+
+.tab.active {
+    background: var(--bg-tab-active);
+    box-shadow: 0 1px 3px var(--shadow-light);
+}
+
+.tab-favicon {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.tab-favicon i {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.tab-title {
+    flex: 1;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+}
+
+.tab-close {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    opacity: 0;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.tab:hover .tab-close {
+    opacity: 1;
+}
+
+.tab-close:hover {
+    background: var(--bg-tertiary);
+}
+
+.tab-close i {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.tab-loading {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+}
+
+.tab-loading i {
+    animation: spin 1s linear infinite;
+    color: var(--accent-color);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+#new-tab-btn {
+    background: transparent;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: 4px;
+    transition: background 0.15s ease;
+    -webkit-app-region: no-drag;
+}
+
+#new-tab-btn:hover {
+    background: var(--bg-tab-hover);
+}
+
+#new-tab-btn i {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   Navigation Bar
+   ======================================== */
+#nav-bar {
+    background: var(--bg-tab-active);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-color);
+    -webkit-app-region: drag; /* allow dragging window from this bar */
+}
+
+#nav-buttons {
+    display: flex;
+    gap: 2px;
+    -webkit-app-region: no-drag; /* keep buttons clickable */
+}
+
+#nav-buttons button,
+#toolbar-buttons button {
+    background: transparent;
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    -webkit-app-region: no-drag;
+}
+
+#nav-buttons button:hover,
+#toolbar-buttons button:hover {
+    background: var(--bg-secondary);
+}
+
+#nav-buttons button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#nav-buttons button i,
+#toolbar-buttons button i {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+#url-bar-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--url-bar-bg);
+    border-radius: 24px;
+    padding: 0 16px;
+    height: 36px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    -webkit-app-region: no-drag; /* make address bar interactive, not draggable */
+}
+
+#url-bar-container:focus-within {
+    background: var(--url-bar-focus);
+    border-color: var(--accent-color);
+    box-shadow: 0 1px 6px var(--shadow-light);
+}
+
+#security-icon {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-right: 10px;
+}
+
+#security-icon.secure {
+    color: var(--success-color);
+}
+
+#url-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+}
+
+#url-input::placeholder {
+    color: var(--text-secondary);
+}
+
+#bookmark-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: color 0.15s ease;
+}
+
+#bookmark-btn:hover {
+    color: var(--accent-color);
+}
+
+#bookmark-btn.bookmarked i {
+    font-weight: 900;
+    color: var(--accent-color);
+}
+
+#toolbar-buttons {
+    display: flex;
+    gap: 2px;
+}
+
+/* ========================================
+   Bookmarks Bar
+   ======================================== */
+#bookmarks-bar {
+    background: var(--bg-tab-active);
+    padding: 4px 12px;
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+}
+
+#bookmarks-bar::-webkit-scrollbar {
+    height: 0;
+}
+
+.bookmark-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+}
+
+.bookmark-item:hover {
+    background: var(--bg-secondary);
+}
+
+.bookmark-item i {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   Webview Container
+   ======================================== */
+#webview-container {
+    flex: 1;
+    position: relative;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+
+webview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+}
+
+webview.active {
+    display: flex;
+}
+
+/* ========================================
+   Loading Bar
+   ======================================== */
+#loading-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-color), #4285f4, var(--accent-color));
+    background-size: 200% 100%;
+    width: 0;
+    transition: width 0.3s ease;
+    z-index: 1000;
+}
+
+#loading-bar.loading {
+    width: 70%;
+    animation: loading-pulse 1.5s ease-in-out infinite;
+}
+
+#loading-bar.complete {
+    width: 100%;
+}
+
+@keyframes loading-pulse {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* ========================================
+   Panels (Downloads, History, Bookmarks)
+   ======================================== */
+.panel {
+    position: absolute;
+    top: 90px;
+    right: 12px;
+    width: 360px;
+    max-height: 480px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px var(--shadow-medium);
+    border: 1px solid var(--border-color);
+    z-index: 100;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel.hidden {
+    display: none;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.panel-header h3 {
+    font-size: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-header h3 i {
+    color: var(--accent-color);
+}
+
+.panel-close {
+    background: transparent;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.panel-close:hover {
+    background: var(--bg-secondary);
+}
+
+.panel-close i {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+#download-list,
+#history-list,
+#bookmarks-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.download-item,
+.history-item,
+.bookmark-list-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: background 0.15s ease;
+    cursor: pointer;
+}
+
+.download-item:hover,
+.history-item:hover,
+.bookmark-list-item:hover {
+    background: var(--bg-secondary);
+}
+
+.download-item-icon,
+.history-item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.download-item-icon i,
+.history-item-icon i {
+    font-size: 18px;
+    color: var(--accent-color);
+}
+
+.download-item-info,
+.history-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.download-item-name,
+.history-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.download-item-status,
+.history-item-url {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.download-progress {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.download-progress-bar {
+    height: 100%;
+    background: var(--accent-color);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+#clear-history-btn {
+    margin: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#clear-history-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+/* ========================================
+   Settings Modal
+   ======================================== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px var(--shadow-medium);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h2 i {
+    color: var(--accent-color);
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.modal-close:hover {
+    background: var(--bg-secondary);
+}
+
+.modal-close i {
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.settings-section {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+}
+
+.settings-section label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.settings-section input[type="text"],
+.settings-section select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.settings-section input[type="text"]:focus,
+.settings-section select:focus {
+    border-color: var(--accent-color);
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-color);
+}
+
+#save-settings-btn {
+    margin: 20px 24px;
+    padding: 12px 24px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s ease;
+}
+
+#save-settings-btn:hover {
+    background: var(--accent-hover);
+}
+
+/* ========================================
+   Danger Zone (Clear Data)
+   ======================================== */
+.settings-section.danger-zone {
+    background: rgba(234, 67, 53, 0.05);
+    border-top: 1px solid var(--error-color);
+}
+
+.settings-section.danger-zone h3 {
+    color: var(--error-color);
+}
+
+.settings-section.danger-zone h3 i {
+    color: var(--error-color);
+}
+
+.settings-section.danger-zone p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.danger-btn {
+    padding: 10px 20px;
+    background: var(--error-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.danger-btn:hover {
+    background: #c62828;
+    transform: translateY(-1px);
+}
+
+.danger-btn:active {
+    transform: translateY(0);
+}
+
+/* ========================================
+   Find Bar
+   ======================================== */
+#find-bar {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px var(--shadow-medium);
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 150;
+}
+
+#find-bar.hidden {
+    display: none;
+}
+
+#find-input {
+    width: 200px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+}
+
+#find-results {
+    font-size: 12px;
+    color: var(--text-secondary);
+    min-width: 40px;
+    text-align: center;
+}
+
+#find-bar button {
+    background: transparent;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#find-bar button:hover {
+    background: var(--bg-secondary);
+}
+
+#find-bar button i {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ========================================
+   Capture Overlay
+   ======================================== */
+#capture-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+#capture-overlay.hidden {
+    display: none;
+}
+
+#capture-overlay-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 18px 18px 14px;
+    border-radius: 14px;
+    background: var(--bg-primary);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    min-width: 320px;
+    max-width: 460px;
+    border: 1px solid var(--border-color);
+}
+
+#capture-overlay-image {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+#capture-overlay-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#capture-overlay-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+#capture-overlay-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+#capture-overlay-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 6px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+#capture-overlay-close:hover {
+    background: var(--bg-tertiary);
+}
+
+/* ========================================
+   Scrollbar Styling
+   ======================================== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* ========================================
+   Empty State
+   ======================================== */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 14px;
+}

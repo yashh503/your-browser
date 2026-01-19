@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Personal Browser</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Title Bar with Tabs (positioned after macOS traffic lights) -->
+    <div id="title-bar">
+      <div id="tabs-container"></div>
+      <button id="new-tab-btn" title="New Tab">
+        <i class="fas fa-plus"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Bar -->
+    <div id="nav-bar">
+      <div id="nav-buttons">
+        <button id="back-btn" title="Go Back">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <button id="forward-btn" title="Go Forward">
+          <i class="fas fa-arrow-right"></i>
+        </button>
+        <button id="refresh-btn" title="Refresh">
+          <i class="fas fa-redo-alt"></i>
+        </button>
+        <button id="home-btn" title="Home"><i class="fas fa-home"></i></button>
+      </div>
+
+      <div id="url-bar-container">
+        <i class="fas fa-lock" id="security-icon"></i>
+        <input type="text" id="url-input" placeholder="Search or enter URL" />
+        <button id="bookmark-btn" title="Bookmark this page">
+          <i class="far fa-star"></i>
+        </button>
+      </div>
+
+      <div id="toolbar-buttons">
+        <button id="downloads-btn" title="Downloads">
+          <i class="fas fa-download"></i>
+        </button>
+        <button id="history-btn" title="History">
+          <i class="fas fa-history"></i>
+        </button>
+        <button id="bookmarks-btn" title="Bookmarks">
+          <i class="fas fa-bookmark"></i>
+        </button>
+        <button id="settings-btn" title="Settings">
+          <i class="fas fa-ellipsis-v"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bookmarks Bar -->
+    <div id="bookmarks-bar">
+      <div class="bookmark-item" data-url="https://google.com">
+        <i class="fab fa-google"></i> Google
+      </div>
+      <div class="bookmark-item" data-url="https://youtube.com">
+        <i class="fab fa-youtube"></i> YouTube
+      </div>
+      <div class="bookmark-item" data-url="https://github.com">
+        <i class="fab fa-github"></i> GitHub
+      </div>
+      <div class="bookmark-item" data-url="https://dribbble.com">
+        <i class="fas fa-basketball-ball"></i> Dribbble
+      </div>
+      <div class="bookmark-item" data-url="https://awwwards.com">
+        <i class="fas fa-award"></i> Awwwards
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="webview-container"></div>
+
+    <!-- Loading Bar -->
+    <div id="loading-bar"></div>
+
+    <!-- Downloads Panel -->
+    <div id="downloads-panel" class="panel hidden">
+      <div class="panel-header">
+        <h3><i class="fas fa-download"></i> Downloads</h3>
+        <button class="panel-close" id="close-downloads">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="download-list"></div>
+    </div>
+
+    <!-- History Panel -->
+    <div id="history-panel" class="panel hidden">
+      <div class="panel-header">
+        <h3><i class="fas fa-history"></i> History</h3>
+        <button class="panel-close" id="close-history">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="history-list"></div>
+      <button id="clear-history-btn">Clear All History</button>
+    </div>
+
+    <!-- Bookmarks Panel -->
+    <div id="bookmarks-panel" class="panel hidden">
+      <div class="panel-header">
+        <h3><i class="fas fa-bookmark"></i> Bookmarks</h3>
+        <button class="panel-close" id="close-bookmarks">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="bookmarks-list"></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2><i class="fas fa-cog"></i> Settings</h2>
+          <button id="close-settings" class="modal-close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="settings-section">
+          <h3>General</h3>
+          <label>Homepage:</label>
+          <input type="text" id="pref-homepage" value="https://google.com" />
+
+          <label>Search Engine:</label>
+          <select id="pref-search">
+            <option value="https://www.google.com/search?q=">Google</option>
+            <option value="https://bing.com/search?q=">Bing</option>
+            <option value="https://search.yahoo.com/search?p=">Yahoo</option>
+          </select>
+        </div>
+
+        <div class="settings-section">
+          <h3>Appearance</h3>
+          <label>Theme:</label>
+          <select id="pref-theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+
+          <label class="checkbox-label">
+            <input type="checkbox" id="pref-bookmarks-bar" checked />
+            Show bookmarks bar
+          </label>
+        </div>
+
+        <div class="settings-section danger-zone">
+          <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
+          <p>This will clear all your settings, history, and bookmarks.</p>
+          <button id="clear-data-btn" class="danger-btn">
+            <i class="fas fa-trash"></i> Clear All Data
+          </button>
+        </div>
+
+        <button id="save-settings-btn">
+          <i class="fas fa-save"></i> Save Changes
+        </button>
+      </div>
+    </div>
+
+    <!-- Find in Page Bar -->
+    <div id="find-bar" class="hidden">
+      <input type="text" id="find-input" placeholder="Find in page..." />
+      <span id="find-results">0/0</span>
+      <button id="find-prev"><i class="fas fa-chevron-up"></i></button>
+      <button id="find-next"><i class="fas fa-chevron-down"></i></button>
+      <button id="find-close"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Screen capture overlay -->
+    <div id="capture-overlay" class="hidden">
+      <div id="capture-overlay-card">
+        <img
+          id="capture-overlay-image"
+          src="alert-image.svg"
+          alt="Capture alert"
+        />
+        <div id="capture-overlay-text">
+          <p id="capture-overlay-title">Screen capture detected</p>
+          <p id="capture-overlay-subtitle">
+            The system just took a screenshot/recording.
+          </p>
+        </div>
+        <button id="capture-overlay-close" title="Dismiss">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
