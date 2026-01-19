@@ -1,8 +1,56 @@
-const { app, BrowserWindow, session, ipcMain } = require('electron');
+const { app, BrowserWindow, session, ipcMain, contentTracing } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execSync } = require('child_process');
+
+// Suppress known non-fatal Chromium errors related to service worker database issues
+// These errors occur due to corrupted IndexedDB files but don't crash the application
+process.on('uncaughtException', (error) => {
+  if (error.message && error.message.includes('service_worker_storage')) {
+    console.warn('Suppressed service worker storage error:', error.message);
+    return; // Don't crash the app for these non-fatal errors
+  }
+  throw error;
+});
+
+/**
+ * Clean up corrupted service worker database files
+ * This helps prevent "Failed to delete the database: Database IO error" errors
+ */
+function cleanupServiceWorkerData() {
+  const userDataPath = app.getPath('userData');
+  const serviceWorkerPath = path.join(userDataPath, 'ServiceWorker');
+  
+  // Also check for IndexedDB in the GPU process directory
+  const gpuPath = path.join(userDataPath, 'GPUCache');
+  const databasesPath = path.join(userDataPath, 'databases');
+  
+  const pathsToClean = [serviceWorkerPath, databasesPath];
+  
+  pathsToClean.forEach(p => {
+    try {
+      if (fs.existsSync(p)) {
+        const stats = fs.statSync(p);
+        if (stats.isDirectory()) {
+          // Rename folder to trigger fresh creation
+          const backupPath = p + '.backup.' + Date.now();
+          fs.renameSync(p, backupPath);
+          console.log(`Backed up corrupted data: ${p} -> ${backupPath}`);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to clean up service worker data:', err.message);
+    }
+  });
+}
+
+// Run cleanup before app is ready to prevent errors during startup
+if (app.isReady()) {
+  cleanupServiceWorkerData();
+} else {
+  app.on('will-ready', cleanupServiceWorkerData);
+}
 
 let mainWindow;
 
@@ -113,7 +161,28 @@ function createWindow() {
   setupDownloadHandler(session.defaultSession);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  createWindow();
+  
+  // Clear corrupted service worker data immediately on startup
+  // This helps prevent the "Failed to delete the database: Database IO error" issue
+  try {
+    const sessions = [session.defaultSession];
+    for (const sess of sessions) {
+      try {
+        await sess.clearStorageData({
+          storages: ['serviceworkers', 'indexdb', 'cachestorage']
+        });
+        console.log('Service worker data cleared on startup');
+      } catch (err) {
+        // Ignore errors during startup clearing - the error might persist but won't crash
+        console.warn('Startup service worker clear warning:', err.message);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to clear service worker data on startup:', err.message);
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
@@ -121,4 +190,45 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// IPC Handler for creating new window
+ipcMain.on('create-new-window', () => {
+  createWindow();
+});
+
+// IPC Handler for clearing service worker data
+ipcMain.on('clear-service-worker-data', async () => {
+  try {
+    // Clear service worker data for all sessions
+    const sessions = [session.defaultSession, ...app.windows().map(w => w.webContents.session)];
+    const uniqueSessions = [...new Set(sessions)];
+    
+    for (const sess of uniqueSessions) {
+      try {
+        await sess.clearStorageData({
+          storages: ['serviceworkers', 'indexdb', 'cachestorage']
+        });
+      } catch (err) {
+        console.warn('Failed to clear service worker data for session:', err.message);
+      }
+    }
+    
+    mainWindow?.webContents.send('service-worker-data-cleared', { success: true });
+  } catch (error) {
+    console.error('Error clearing service worker data:', error);
+    mainWindow?.webContents.send('service-worker-data-cleared', { success: false, error: error.message });
+  }
+});
+
+// IPC Handler for getting service worker count
+ipcMain.on('get-service-worker-info', async () => {
+  try {
+    const serviceWorkers = session.defaultSession.serviceWorkers;
+    mainWindow?.webContents.send('service-worker-info', {
+      count: serviceWorkers ? Object.keys(serviceWorkers).length : 0
+    });
+  } catch (error) {
+    mainWindow?.webContents.send('service-worker-info', { count: 0 });
+  }
 });

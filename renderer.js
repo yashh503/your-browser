@@ -9,6 +9,7 @@ let tabCounter = 0;
 let tabManager = null;
 let history = JSON.parse(localStorage.getItem('browserHistory') || '[]');
 let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+let recentlyClosedTabs = []; // Track recently closed tabs for Cmd/Ctrl+Shift+T
 
 // Settings
 const settings = {
@@ -165,6 +166,21 @@ class TabManager {
         if (index === -1) return;
 
         const tabToDelete = tabs[index];
+        
+        // Track the closed tab URL for Cmd/Ctrl+Shift+T
+        try {
+            const closedUrl = tabToDelete.webview.getURL();
+            if (closedUrl && closedUrl !== 'about:blank') {
+                recentlyClosedTabs.push({ url: closedUrl, timestamp: Date.now() });
+                // Keep only last 10 closed tabs
+                if (recentlyClosedTabs.length > 10) {
+                    recentlyClosedTabs.shift();
+                }
+            }
+        } catch (e) {
+            // Ignore errors when getting URL
+        }
+
         tabToDelete.webview.remove();
         tabToDelete.tabElement.remove();
         tabs.splice(index, 1);
@@ -368,6 +384,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Clear service worker data
+    document.getElementById('clear-service-workers-btn')?.addEventListener('click', async () => {
+        const confirmed = confirm('This will clear all service worker data, IndexedDB databases, and cache storage. This may fix issues with websites that use service workers. Continue?');
+        if (confirmed) {
+            ipcRenderer.send('clear-service-worker-data');
+        }
+    });
+
+    // Listen for service worker data cleared response
+    ipcRenderer.on('service-worker-data-cleared', (event, data) => {
+        if (data.success) {
+            alert('Service worker data has been cleared successfully. Some websites may need to be reloaded.');
+        } else {
+            alert('Failed to clear service worker data: ' + (data.error || 'Unknown error'));
+        }
+    });
+
+    // Listen for service worker info response
+    ipcRenderer.on('service-worker-info', (event, data) => {
+        const swCount = document.getElementById('service-worker-count');
+        if (swCount) {
+            swCount.textContent = data.count > 0 ? `${data.count} active` : 'None';
+        }
+    });
+
     // Window controls (for frameless window)
     document.getElementById('minimize-btn')?.addEventListener('click', () => {
         ipcRenderer.send('window-minimize');
@@ -388,9 +429,163 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('find-bar').classList.remove('hidden');
             document.getElementById('find-input').focus();
         }
+    });
+
+    // ========================================
+    // Keyboard Shortcuts
+    // ========================================
+    document.addEventListener('keydown', (e) => {
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        const cmdOrCtrl = e.metaKey || e.ctrlKey;
+
+        // Cmd/Ctrl + N - New Window
+        if (cmdOrCtrl && e.key === 'n') {
+            e.preventDefault();
+            ipcRenderer.send('create-new-window');
+        }
+
+        // Cmd/Ctrl + T - New Tab
+        if (cmdOrCtrl && e.key === 't') {
+            e.preventDefault();
+            tabManager.createTab(settings.homePage);
+        }
+
+        // Cmd/Ctrl + W - Close Tab
+        if (cmdOrCtrl && e.key === 'w') {
+            e.preventDefault();
+            if (activeTabId !== null) {
+                tabManager.closeTab(activeTabId);
+            }
+        }
+
+        // Cmd/Ctrl + Shift + T - Reopen Last Closed Tab
+        if (cmdOrCtrl && e.shiftKey && e.key === 't') {
+            e.preventDefault();
+            if (recentlyClosedTabs.length > 0) {
+                const lastClosed = recentlyClosedTabs.pop();
+                tabManager.createTab(lastClosed.url);
+            }
+        }
+
+        // Cmd/Ctrl + R - Refresh Page
+        if (cmdOrCtrl && e.key === 'r' && !e.shiftKey) {
+            e.preventDefault();
+            tabManager.getActiveWebview()?.reload();
+        }
+
+        // Cmd/Ctrl + Shift + R - Hard Refresh
+        if (cmdOrCtrl && e.shiftKey && e.key === 'r') {
+            e.preventDefault();
+            tabManager.getActiveWebview()?.reloadIgnoringCache();
+        }
+
+        // Cmd/Ctrl + L - Focus URL Bar
+        if (cmdOrCtrl && e.key === 'l') {
+            e.preventDefault();
+            const urlInput = document.getElementById('url-input');
+            urlInput.focus();
+            urlInput.select();
+        }
+
+        // Cmd/Ctrl + D - Bookmark Current Page
+        if (cmdOrCtrl && e.key === 'd') {
+            e.preventDefault();
+            const wv = tabManager.getActiveWebview();
+            if (wv) {
+                const url = wv.getURL();
+                const title = wv.getTitle();
+
+                const existingIndex = bookmarks.findIndex(b => b.url === url);
+                if (existingIndex >= 0) {
+                    bookmarks.splice(existingIndex, 1);
+                } else {
+                    bookmarks.push({ url, title, timestamp: Date.now() });
+                }
+
+                localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+                tabManager.updateBookmarkButton(url);
+                renderBookmarks();
+            }
+        }
+
+        // Cmd/Ctrl + Tab - Next Tab
+        if (cmdOrCtrl && !e.shiftKey && e.key === 'Tab') {
+            e.preventDefault();
+            const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+            const nextIndex = (currentIndex + 1) % tabs.length;
+            if (tabs[nextIndex]) {
+                tabManager.switchTab(tabs[nextIndex].id);
+            }
+        }
+
+        // Cmd/Ctrl + Shift + Tab - Previous Tab
+        if (cmdOrCtrl && e.shiftKey && e.key === 'Tab') {
+            e.preventDefault();
+            const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+            const prevIndex = currentIndex === 0 ? tabs.length - 1 : currentIndex - 1;
+            if (tabs[prevIndex]) {
+                tabManager.switchTab(tabs[prevIndex].id);
+            }
+        }
+
+        // Cmd/Ctrl + 1-9 - Switch to Tab 1-9
+        if (cmdOrCtrl && e.key >= '1' && e.key <= '9') {
+            e.preventDefault();
+            const tabIndex = parseInt(e.key) - 1;
+            if (tabs[tabIndex]) {
+                tabManager.switchTab(tabs[tabIndex].id);
+            }
+        }
+
+        // Cmd/Ctrl + 0 - Switch to Last Tab (or switch to tab 10)
+        if (cmdOrCtrl && e.key === '0') {
+            e.preventDefault();
+            const lastTab = tabs[tabs.length - 1];
+            if (lastTab) {
+                tabManager.switchTab(lastTab.id);
+            }
+        }
+
+        // Escape - Stop Loading or Close Find Bar
         if (e.key === 'Escape') {
-            document.getElementById('find-bar').classList.add('hidden');
-            tabManager.getActiveWebview()?.stopFindInPage('clearSelection');
+            const findBar = document.getElementById('find-bar');
+            if (!findBar.classList.contains('hidden')) {
+                findBar.classList.add('hidden');
+                tabManager.getActiveWebview()?.stopFindInPage('clearSelection');
+            } else {
+                const wv = tabManager.getActiveWebview();
+                if (wv) {
+                    wv.stop();
+                }
+            }
+        }
+
+        // Cmd/Ctrl + + - Zoom In
+        if (cmdOrCtrl && (e.key === '+' || e.key === '=')) {
+            e.preventDefault();
+            const wv = tabManager.getActiveWebview();
+            if (wv) {
+                const currentZoom = wv.getZoomFactor();
+                wv.setZoomFactor(Math.min(currentZoom * 1.2, 5));
+            }
+        }
+
+        // Cmd/Ctrl + - - Zoom Out
+        if (cmdOrCtrl && e.key === '-') {
+            e.preventDefault();
+            const wv = tabManager.getActiveWebview();
+            if (wv) {
+                const currentZoom = wv.getZoomFactor();
+                wv.setZoomFactor(Math.max(currentZoom / 1.2, 0.25));
+            }
+        }
+
+        // Cmd/Ctrl + 0 - Reset Zoom
+        if (cmdOrCtrl && e.key === '0') {
+            const wv = tabManager.getActiveWebview();
+            if (wv) {
+                wv.setZoomFactor(1);
+            }
         }
     });
 

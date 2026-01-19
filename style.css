@@ -60,7 +60,8 @@ body {
 #title-bar {
     background: var(--bg-tab-bar);
     display: flex;
-    align-items: center;
+    /* align-items: center; */
+    /* justify-content: space-between; */
     padding: 8px 8px 8px 80px; /* 80px left padding for macOS traffic lights */
     height: 44px;
     -webkit-app-region: drag;
@@ -70,7 +71,6 @@ body {
 #tabs-container {
     display: flex;
     align-items: center;
-    flex: 1;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-app-region: no-drag;
@@ -754,6 +754,48 @@ webview.active {
 
 .danger-btn:active {
     transform: translateY(0);
+}
+
+/* ========================================
+   Warning Button (for Service Workers)
+   ======================================== */
+.warning-btn {
+    padding: 10px 20px;
+    background: var(--warning-color);
+    color: #202124;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s ease, transform 0.1s ease;
+    margin-top: 12px;
+}
+
+.warning-btn:hover {
+    background: #f9a825;
+    transform: translateY(-1px);
+}
+
+.warning-btn:active {
+    transform: translateY(0);
+}
+
+#service-worker-info {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+#service-worker-count {
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 /* ========================================
