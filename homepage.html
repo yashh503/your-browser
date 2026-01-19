@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Tab - Yarvix</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0c0c0e;
+            --bg-secondary: #161618;
+            --bg-tertiary: #1c1c1f;
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --border-color: #27272a;
+            --accent-color: #8b5cf6;
+            --accent-hover: #7c3aed;
+            --glass-bg: rgba(24, 24, 27, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 12vh;
+            overflow-x: hidden;
+        }
+
+        body.light-theme {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --glass-bg: rgba(255, 255, 255, 0.9);
+            --glass-border: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Background gradient effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Logo and Branding */
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 56px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-color) 0%, #a78bfa 50%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -2px;
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 400;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Search Container */
+        .search-container {
+            width: 100%;
+            max-width: 640px;
+            padding: 0 20px;
+            margin-bottom: 48px;
+        }
+
+        .search-box {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-input-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 4px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-input-wrapper:focus-within {
+            border-color: var(--accent-color);
+            box-shadow: 0 4px 32px rgba(139, 92, 246, 0.2), 0 0 0 3px rgba(139, 92, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .search-engine-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 20px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: 4px;
+        }
+
+        .search-engine-btn:hover {
+            background: var(--border-color);
+        }
+
+        .search-engine-btn i {
+            font-size: 16px;
+            color: var(--accent-color);
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 16px 20px;
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 4px;
+        }
+
+        .search-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+        }
+
+        /* Search Engine Dropdown */
+        .engine-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 8px;
+            min-width: 200px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .engine-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .engine-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .engine-option:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .engine-option.active {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .engine-option i {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+            color: var(--accent-color);
+        }
+
+        .engine-option span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Quick Links */
+        .quick-links {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 640px;
+            padding: 0 20px;
+            margin-bottom: 48px;
+        }
+
+        .quick-link {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 20px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            min-width: 100px;
+        }
+
+        .quick-link:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-color);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15);
+        }
+
+        .quick-link-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .quick-link-icon.google { background: linear-gradient(135deg, #4285f4, #34a853); color: white; }
+        .quick-link-icon.youtube { background: linear-gradient(135deg, #ff0000, #cc0000); color: white; }
+        .quick-link-icon.github { background: linear-gradient(135deg, #333, #24292e); color: white; }
+        .quick-link-icon.twitter { background: linear-gradient(135deg, #1da1f2, #0d8ecf); color: white; }
+        .quick-link-icon.reddit { background: linear-gradient(135deg, #ff4500, #ff5722); color: white; }
+
+        .quick-link span {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* Settings Section */
+        .settings-section {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .settings-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .settings-btn:hover {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: fixed;
+            bottom: 80px;
+            right: 24px;
+            width: 320px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 200;
+        }
+
+        .settings-panel.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .settings-panel h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-panel h3 i {
+            color: var(--accent-color);
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .setting-control select {
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .setting-control select:focus {
+            border-color: var(--accent-color);
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            background: var(--bg-tertiary);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active {
+            background: var(--accent-color);
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active::after {
+            transform: translateX(22px);
+        }
+
+        /* Time and Date */
+        .datetime {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            text-align: left;
+        }
+
+        .time {
+            font-family: 'Outfit', sans-serif;
+            font-size: 48px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .date {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Keyboard hint */
+        .keyboard-hint {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .kbd {
+            padding: 4px 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .logo {
+                font-size: 42px;
+            }
+
+            .quick-links {
+                gap: 12px;
+            }
+
+            .quick-link {
+                padding: 16px 20px;
+                min-width: 80px;
+            }
+
+            .datetime {
+                display: none;
+            }
+
+            .keyboard-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Logo Section -->
+    <div class="logo-section">
+        <div class="logo">Yarvix</div>
+        <div class="tagline">Private & Fast Browsing</div>
+    </div>
+
+    <!-- Search Container -->
+    <div class="search-container">
+        <div class="search-box">
+            <div class="search-input-wrapper">
+                <button class="search-engine-btn" id="engine-btn">
+                    <i class="fab fa-google" id="engine-icon"></i>
+                    <span id="engine-name">Google</span>
+                    <i class="fas fa-chevron-down" style="font-size: 10px; margin-left: 4px;"></i>
+                </button>
+                <input type="text" class="search-input" id="search-input" placeholder="Search the web..." autofocus>
+                <button class="search-btn" id="search-btn">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Search Engine Dropdown -->
+            <div class="engine-dropdown" id="engine-dropdown">
+                <div class="engine-option active" data-engine="google" data-url="https://www.google.com/search?q=">
+                    <i class="fab fa-google"></i>
+                    <span>Google</span>
+                </div>
+                <div class="engine-option" data-engine="duckduckgo" data-url="https://duckduckgo.com/?q=">
+                    <i class="fas fa-mask"></i>
+                    <span>DuckDuckGo</span>
+                </div>
+                <div class="engine-option" data-engine="bing" data-url="https://www.bing.com/search?q=">
+                    <i class="fab fa-microsoft"></i>
+                    <span>Bing</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="quick-links">
+        <a href="https://google.com" class="quick-link">
+            <div class="quick-link-icon google"><i class="fab fa-google"></i></div>
+            <span>Google</span>
+        </a>
+        <a href="https://youtube.com" class="quick-link">
+            <div class="quick-link-icon youtube"><i class="fab fa-youtube"></i></div>
+            <span>YouTube</span>
+        </a>
+        <a href="https://github.com" class="quick-link">
+            <div class="quick-link-icon github"><i class="fab fa-github"></i></div>
+            <span>GitHub</span>
+        </a>
+        <a href="https://twitter.com" class="quick-link">
+            <div class="quick-link-icon twitter"><i class="fab fa-twitter"></i></div>
+            <span>Twitter</span>
+        </a>
+        <a href="https://reddit.com" class="quick-link">
+            <div class="quick-link-icon reddit"><i class="fab fa-reddit-alien"></i></div>
+            <span>Reddit</span>
+        </a>
+    </div>
+
+    <!-- Date Time -->
+    <div class="datetime">
+        <div class="time" id="time">00:00</div>
+        <div class="date" id="date">Loading...</div>
+    </div>
+
+    <!-- Keyboard Hint -->
+    <div class="keyboard-hint">
+        Press <span class="kbd">Tab</span> to switch engines
+    </div>
+
+    <!-- Settings Section -->
+    <div class="settings-section">
+        <button class="settings-btn" id="theme-toggle" title="Toggle Theme">
+            <i class="fas fa-moon"></i>
+        </button>
+        <button class="settings-btn" id="settings-toggle" title="Settings">
+            <i class="fas fa-cog"></i>
+        </button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settings-panel">
+        <h3><i class="fas fa-sliders"></i> Quick Settings</h3>
+
+        <div class="setting-item">
+            <span class="setting-label">Theme</span>
+            <div class="setting-control">
+                <select id="theme-select">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <span class="setting-label">Search Engine</span>
+            <div class="setting-control">
+                <select id="search-engine-select">
+                    <option value="https://www.google.com/search?q=">Google</option>
+                    <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+                    <option value="https://www.bing.com/search?q=">Bing</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-item">
+            <span class="setting-label">Show Bookmarks Bar</span>
+            <div class="toggle" id="bookmarks-toggle"></div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentEngine = {
+            name: 'Google',
+            icon: 'fab fa-google',
+            url: 'https://www.google.com/search?q='
+        };
+
+        // Elements
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const engineBtn = document.getElementById('engine-btn');
+        const engineDropdown = document.getElementById('engine-dropdown');
+        const engineIcon = document.getElementById('engine-icon');
+        const engineName = document.getElementById('engine-name');
+        const settingsToggle = document.getElementById('settings-toggle');
+        const settingsPanel = document.getElementById('settings-panel');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeSelect = document.getElementById('theme-select');
+        const searchEngineSelect = document.getElementById('search-engine-select');
+        const bookmarksToggle = document.getElementById('bookmarks-toggle');
+
+        // Load saved settings
+        function loadSettings() {
+            const savedEngine = localStorage.getItem('searchEngine') || 'https://www.google.com/search?q=';
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            const showBookmarks = localStorage.getItem('showBookmarksBar') !== 'false';
+
+            // Apply theme
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+            }
+            themeSelect.value = savedTheme;
+
+            // Apply search engine
+            searchEngineSelect.value = savedEngine;
+            updateSearchEngine(savedEngine);
+
+            // Apply bookmarks toggle
+            if (showBookmarks) {
+                bookmarksToggle.classList.add('active');
+            }
+        }
+
+        function updateSearchEngine(url) {
+            const engines = {
+                'https://www.google.com/search?q=': { name: 'Google', icon: 'fab fa-google' },
+                'https://duckduckgo.com/?q=': { name: 'DuckDuckGo', icon: 'fas fa-mask' },
+                'https://www.bing.com/search?q=': { name: 'Bing', icon: 'fab fa-microsoft' }
+            };
+
+            const engine = engines[url] || engines['https://www.google.com/search?q='];
+            currentEngine = { ...engine, url };
+
+            engineIcon.className = engine.icon;
+            engineName.textContent = engine.name;
+            searchInput.placeholder = `Search with ${engine.name}...`;
+
+            // Update dropdown active state
+            document.querySelectorAll('.engine-option').forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.url === url);
+            });
+        }
+
+        // Search functionality
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Check if it's a URL
+            const isUrl = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/.test(query) ||
+                          query.startsWith('localhost') ||
+                          /^(\d{1,3}\.){3}\d{1,3}/.test(query);
+
+            if (isUrl) {
+                let url = query;
+                if (!url.startsWith('http')) url = 'https://' + url;
+                window.location.href = url;
+            } else {
+                window.location.href = currentEngine.url + encodeURIComponent(query);
+            }
+        }
+
+        // Event Listeners
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        searchBtn.addEventListener('click', performSearch);
+
+        // Engine dropdown toggle
+        engineBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            engineDropdown.classList.toggle('show');
+        });
+
+        // Engine selection
+        document.querySelectorAll('.engine-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const url = option.dataset.url;
+                updateSearchEngine(url);
+                localStorage.setItem('searchEngine', url);
+                engineDropdown.classList.remove('show');
+
+                // Notify parent window
+                if (window.parent !== window) {
+                    window.parent.postMessage({ type: 'setting-changed', key: 'searchEngine', value: url }, '*');
+                }
+            });
+        });
+
+        // Tab key to cycle engines
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && !e.shiftKey) {
+                e.preventDefault();
+                const engines = ['https://www.google.com/search?q=', 'https://duckduckgo.com/?q=', 'https://www.bing.com/search?q='];
+                const currentIndex = engines.indexOf(currentEngine.url);
+                const nextIndex = (currentIndex + 1) % engines.length;
+                updateSearchEngine(engines[nextIndex]);
+                localStorage.setItem('searchEngine', engines[nextIndex]);
+            }
+        });
+
+        // Settings panel toggle
+        settingsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsPanel.classList.toggle('show');
+        });
+
+        // Theme toggle button
+        themeToggle.addEventListener('click', () => {
+            const isLight = document.body.classList.toggle('light-theme');
+            const theme = isLight ? 'light' : 'dark';
+            themeToggle.innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            themeSelect.value = theme;
+            localStorage.setItem('theme', theme);
+
+            // Notify parent window
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'setting-changed', key: 'theme', value: theme }, '*');
+            }
+        });
+
+        // Theme select
+        themeSelect.addEventListener('change', (e) => {
+            const theme = e.target.value;
+            document.body.classList.toggle('light-theme', theme === 'light');
+            themeToggle.innerHTML = theme === 'light' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            localStorage.setItem('theme', theme);
+
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'setting-changed', key: 'theme', value: theme }, '*');
+            }
+        });
+
+        // Search engine select
+        searchEngineSelect.addEventListener('change', (e) => {
+            updateSearchEngine(e.target.value);
+            localStorage.setItem('searchEngine', e.target.value);
+
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'setting-changed', key: 'searchEngine', value: e.target.value }, '*');
+            }
+        });
+
+        // Bookmarks toggle
+        bookmarksToggle.addEventListener('click', () => {
+            bookmarksToggle.classList.toggle('active');
+            const show = bookmarksToggle.classList.contains('active');
+            localStorage.setItem('showBookmarksBar', show);
+
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'setting-changed', key: 'showBookmarksBar', value: show }, '*');
+            }
+        });
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', () => {
+            engineDropdown.classList.remove('show');
+            settingsPanel.classList.remove('show');
+        });
+
+        // Prevent closing when clicking inside
+        settingsPanel.addEventListener('click', (e) => e.stopPropagation());
+        engineDropdown.addEventListener('click', (e) => e.stopPropagation());
+
+        // Time and Date
+        function updateDateTime() {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const date = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+            document.getElementById('time').textContent = time;
+            document.getElementById('date').textContent = date;
+        }
+
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        // Load settings on start
+        loadSettings();
+
+        // Focus search input
+        searchInput.focus();
+    </script>
+</body>
+</html>

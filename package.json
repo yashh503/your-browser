@@ -1,6 +1,7 @@
 {
-  "name": "personal-browser",
+  "name": "Yarvix-browser",
   "version": "1.0.0",
+  "description": "Yarvix - The Ultimate Stealth Browser",
   "main": "main.js",
   "scripts": {
     "start": "electron ."

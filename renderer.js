@@ -13,9 +13,9 @@ let recentlyClosedTabs = []; // Track recently closed tabs for Cmd/Ctrl+Shift+T
 
 // Settings
 const settings = {
-    homePage: localStorage.getItem('homePage') || 'https://google.com',
-    searchEngine: localStorage.getItem('searchEngine') || 'https://google.com/?q=',
-    theme: localStorage.getItem('theme') || 'light',
+    homePage: localStorage.getItem('homePage') || `file://${__dirname}/homepage.html`,
+    searchEngine: localStorage.getItem('searchEngine') || 'https://www.google.com/search?q=',
+    theme: localStorage.getItem('theme') || 'dark',
     showBookmarksBar: localStorage.getItem('showBookmarksBar') !== 'false'
 };
 
@@ -59,7 +59,17 @@ class TabManager {
             if (tabTitleEl) tabTitleEl.innerText = title;
 
             if (activeTabId === tabId) {
-                document.getElementById('url-input').value = webview.getURL();
+                const currentUrl = webview.getURL();
+                const urlInput = document.getElementById('url-input');
+
+                // Show placeholder instead of URL when on homepage
+                // Check if on custom homepage or normalized homepage match
+                const isCustomHomepage = currentUrl.includes('homepage.html');
+                const normalizeUrl = (url) => url.replace(/^https?:\/\//, '').replace(/^file:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
+                const isHomepage = isCustomHomepage || normalizeUrl(currentUrl) === normalizeUrl(settings.homePage);
+
+                urlInput.value = isHomepage ? '' : currentUrl;
+
                 document.getElementById('loading-bar').classList.remove('loading');
                 document.getElementById('loading-bar').classList.add('complete');
                 setTimeout(() => {
@@ -67,8 +77,9 @@ class TabManager {
                     document.getElementById('loading-bar').style.width = '0';
                 }, 300);
 
-                this.updateSecurityIcon(webview.getURL());
-                this.updateBookmarkButton(webview.getURL());
+                this.updateSecurityIcon(currentUrl);
+                this.updateBookmarkButton(currentUrl);
+                this.updateNavigationButtons(webview);
             }
 
             // Update favicon
@@ -102,8 +113,8 @@ class TabManager {
         tabElement.id = `tab-${tabId}`;
         tabElement.innerHTML = `
             <span class="tab-favicon"><i class="fas fa-globe"></i></span>
-            <span class="tab-title">New Tab</span>
-            <span class="tab-close"><i class="fas fa-times"></i></span>
+            <span class="tab-title">Yarvix Tab</span>
+            <span class="tab-close" title="Close Tab"><i class="fas fa-xmark"></i></span>
         `;
 
         tabElement.addEventListener('click', (e) => {
@@ -148,9 +159,18 @@ class TabManager {
                 t.tabElement.classList.add('active');
                 try {
                     const url = t.webview.getURL() || '';
-                    document.getElementById('url-input').value = url;
+                    const urlInput = document.getElementById('url-input');
+
+                    // Show placeholder instead of URL when on homepage
+                    // Check if on custom homepage or normalized homepage match
+                    const isCustomHomepage = url.includes('homepage.html');
+                    const normalizeUrl = (u) => u.replace(/^https?:\/\//, '').replace(/^file:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
+                    const isHomepage = isCustomHomepage || normalizeUrl(url) === normalizeUrl(settings.homePage);
+
+                    urlInput.value = isHomepage ? '' : url;
                     this.updateSecurityIcon(url);
                     this.updateBookmarkButton(url);
+                    this.updateNavigationButtons(t.webview);
                 } catch (e) {
                     document.getElementById('url-input').value = '';
                 }
@@ -201,11 +221,11 @@ class TabManager {
     updateSecurityIcon(url) {
         const icon = document.getElementById('security-icon');
         if (url.startsWith('https://')) {
-            icon.className = 'fas fa-lock secure';
+            icon.className = 'fas fa-shield-halved secure';
         } else if (url.startsWith('http://')) {
-            icon.className = 'fas fa-unlock';
+            icon.className = 'fas fa-triangle-exclamation';
         } else {
-            icon.className = 'fas fa-info-circle';
+            icon.className = 'fas fa-circle-info';
         }
     }
 
@@ -238,6 +258,19 @@ class TabManager {
         if (history.length > 100) history = history.slice(0, 100);
 
         localStorage.setItem('browserHistory', JSON.stringify(history));
+    }
+
+    updateNavigationButtons(webview) {
+        const backBtn = document.getElementById('back-btn');
+        const forwardBtn = document.getElementById('forward-btn');
+
+        if (webview) {
+            backBtn.disabled = !webview.canGoBack();
+            forwardBtn.disabled = !webview.canGoForward();
+        } else {
+            backBtn.disabled = true;
+            forwardBtn.disabled = true;
+        }
     }
 }
 
@@ -280,6 +313,63 @@ document.addEventListener('DOMContentLoaded', () => {
         tabManager.createTab(settings.homePage);
     });
 
+    // Search Engine Switcher
+    const engineSelect = document.getElementById('engine-select');
+    const engineIcon = document.getElementById('active-engine-icon');
+
+    const updateEngineUI = (url) => {
+        if (!engineIcon) return;
+
+        const urlInput = document.getElementById('url-input');
+        let engineName = 'Search';
+
+        // More specific checks - check for full domain names
+        if (url.includes('google.com')) {
+            engineIcon.innerHTML = '<i class="fab fa-google"></i>';
+            engineName = 'Google';
+        } else if (url.includes('duckduckgo')) {
+            engineIcon.innerHTML = '<i class="fas fa-mask"></i>'; // Privacy mask for DuckDuckGo
+            engineName = 'DuckDuckGo';
+        } else if (url.includes('bing')) {
+            engineIcon.innerHTML = '<i class="fab fa-microsoft"></i>';
+            engineName = 'Bing';
+        } else {
+            engineIcon.innerHTML = '<i class="fas fa-magnifying-glass"></i>';
+        }
+
+        // Update URL bar placeholder with search engine name
+        if (urlInput) {
+            urlInput.placeholder = `Search with ${engineName} or enter URL`;
+        }
+    };
+
+    // Initialize UI - set saved search engine
+    if (engineSelect && engineIcon) {
+        // Ensure the saved search engine value exists in the dropdown
+        const savedEngine = settings.searchEngine;
+        const optionExists = Array.from(engineSelect.options).some(opt => opt.value === savedEngine);
+
+        if (optionExists) {
+            engineSelect.value = savedEngine;
+        } else {
+            // Default to Google if saved value is invalid
+            engineSelect.value = 'https://www.google.com/search?q=';
+            settings.searchEngine = 'https://www.google.com/search?q=';
+            localStorage.setItem('searchEngine', settings.searchEngine);
+        }
+        updateEngineUI(settings.searchEngine);
+
+        engineSelect.addEventListener('change', (e) => {
+            settings.searchEngine = e.target.value;
+            localStorage.setItem('searchEngine', settings.searchEngine);
+            updateEngineUI(settings.searchEngine);
+
+            // Also update settings modal if it's open
+            const modalSearch = document.getElementById('pref-search');
+            if (modalSearch) modalSearch.value = settings.searchEngine;
+        });
+    }
+
     // URL Bar
     document.getElementById('url-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -312,12 +402,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const url = wv.getURL();
         const title = wv.getTitle();
+        const btn = document.getElementById('bookmark-btn');
 
         const existingIndex = bookmarks.findIndex(b => b.url === url);
         if (existingIndex >= 0) {
             bookmarks.splice(existingIndex, 1);
         } else {
             bookmarks.push({ url, title, timestamp: Date.now() });
+            // Add pulse animation when adding bookmark
+            btn.classList.add('just-bookmarked');
+            setTimeout(() => btn.classList.remove('just-bookmarked'), 400);
         }
 
         localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
@@ -366,6 +460,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('bookmarks-bar').style.display = settings.showBookmarksBar ? 'flex' : 'none';
 
         document.getElementById('settings-modal').classList.add('hidden');
+
+        // Sync title bar engine switcher
+        const engineSelect = document.getElementById('engine-select');
+        const engineIcon = document.getElementById('active-engine-icon');
+        if (engineSelect) engineSelect.value = settings.searchEngine;
+        if (engineIcon) {
+            const url = settings.searchEngine;
+            if (url.includes('google.com')) {
+                engineIcon.innerHTML = '<i class="fab fa-google"></i>';
+            } else if (url.includes('duckduckgo')) {
+                engineIcon.innerHTML = '<i class="fas fa-mask"></i>';
+            } else if (url.includes('bing')) {
+                engineIcon.innerHTML = '<i class="fab fa-microsoft"></i>';
+            } else {
+                engineIcon.innerHTML = '<i class="fas fa-magnifying-glass"></i>';
+            }
+        }
     });
 
     // Clear history
@@ -648,6 +759,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadsPanel = document.getElementById('downloads-panel');
 
     ipcRenderer.on('download-start', (event, data) => {
+        // Hide empty state when download starts
+        const emptyState = document.getElementById('downloads-empty');
+        if (emptyState) emptyState.style.display = 'none';
+
         const item = document.createElement('div');
         item.className = 'download-item';
         item.id = `dl-${data.fileName.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -685,6 +800,56 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render initial data
     renderHistory();
     renderBookmarks();
+
+    // Listen for settings changes from homepage
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'setting-changed') {
+            const { key, value } = event.data;
+
+            if (key === 'theme') {
+                settings.theme = value;
+                localStorage.setItem('theme', value);
+                applyTheme(value);
+            } else if (key === 'searchEngine') {
+                settings.searchEngine = value;
+                localStorage.setItem('searchEngine', value);
+                // Update title bar engine switcher
+                const engineSelect = document.getElementById('engine-select');
+                const engineIcon = document.getElementById('active-engine-icon');
+                if (engineSelect) engineSelect.value = value;
+                if (engineIcon) {
+                    if (value.includes('google.com')) {
+                        engineIcon.innerHTML = '<i class="fab fa-google"></i>';
+                    } else if (value.includes('duckduckgo')) {
+                        engineIcon.innerHTML = '<i class="fas fa-mask"></i>';
+                    } else if (value.includes('bing')) {
+                        engineIcon.innerHTML = '<i class="fab fa-microsoft"></i>';
+                    }
+                }
+            } else if (key === 'showBookmarksBar') {
+                settings.showBookmarksBar = value;
+                localStorage.setItem('showBookmarksBar', value);
+                document.getElementById('bookmarks-bar').style.display = value ? 'flex' : 'none';
+            }
+        }
+    });
+
+    // Click outside to close panels
+    document.addEventListener('click', (e) => {
+        // Close panels when clicking outside
+        const panels = document.querySelectorAll('.panel:not(.hidden)');
+        panels.forEach(panel => {
+            if (!panel.contains(e.target) && !e.target.closest('#toolbar-buttons')) {
+                panel.classList.add('hidden');
+            }
+        });
+
+        // Close settings modal when clicking on backdrop
+        const modal = document.getElementById('settings-modal');
+        if (!modal.classList.contains('hidden') && e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
 });
 
 /**
@@ -715,10 +880,12 @@ function setupPanelToggle(btnId, panelId, closeId) {
 }
 
 function applyTheme(theme) {
-    if (theme === 'dark') {
-        document.body.classList.add('dark-theme');
-    } else {
+    if (theme === 'light') {
+        document.body.classList.add('light-theme');
         document.body.classList.remove('dark-theme');
+    } else {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
     }
 }
 
