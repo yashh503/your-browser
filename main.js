@@ -367,6 +367,12 @@ app.on('activate', () => {
 ipcMain.on('create-new-window', () => {
   createWindow();
 });
+ipcMain.on("close-app", () => {
+    app.quit();
+});
+ipcMain.on("log", (_, msg) => {
+  console.log("[Renderer]:", msg);
+});
 
 // IPC Handler for opening URL in new tab (from Cmd+click)
 ipcMain.on('open-url-in-new-tab', (_event, url) => {

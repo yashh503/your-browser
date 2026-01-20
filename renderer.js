@@ -229,7 +229,7 @@ class TabManager {
         // Track the closed tab URL for Cmd/Ctrl+Shift+T
         try {
             const closedUrl = tabToDelete.webview.getURL();
-            if (closedUrl && closedUrl !== 'about:blank') {
+            if (closedUrl && closedUrl !== 'about:blank' && !closedUrl.includes('homepage.html')) {            
                 recentlyClosedTabs.push({ url: closedUrl, timestamp: Date.now() });
                 // Keep only last 10 closed tabs
                 if (recentlyClosedTabs.length > 10) {
@@ -237,6 +237,7 @@ class TabManager {
                 }
             }
         } catch (e) {
+             ipcRenderer.send("log", `${e} "e"`);
             // Ignore errors when getting URL
         }
 
@@ -249,7 +250,8 @@ class TabManager {
             const newIndex = Math.min(index, tabs.length - 1);
             this.switchTab(tabs[newIndex].id);
         } else if (tabs.length === 0) {
-            this.createTab();
+            ipcRenderer.send('close-app')
+            // this.createTab();
         }
     }
 
