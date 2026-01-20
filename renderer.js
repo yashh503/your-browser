@@ -16,6 +16,7 @@ const settings = {
     homePage: localStorage.getItem('homePage') || `file://${__dirname}/homepage.html`,
     searchEngine: localStorage.getItem('searchEngine') || 'https://www.google.com/search?q=',
     theme: localStorage.getItem('theme') || 'dark',
+    colorTheme: localStorage.getItem('colorTheme') || 'purple',
     showBookmarksBar: localStorage.getItem('showBookmarksBar') !== 'false'
 };
 
@@ -33,49 +34,59 @@ class TabManager {
             t.tabElement.classList.remove('active');
         });
 
-        // Create Webview
+        // Create Webview with proper browser-like configuration
         const webview = document.createElement('webview');
         webview.src = url;
         webview.setAttribute('allowpopups', '');
+        webview.setAttribute('plugins', '');
+        webview.setAttribute('webpreferences', 'contextIsolation=no, nodeIntegration=no, javascript=yes, webSecurity=yes, allowRunningInsecureContent=no');
+        // Use Chrome User-Agent for website compatibility
+        webview.setAttribute('useragent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         webview.classList.add('active');
 
         // Webview Event Listeners
         webview.addEventListener('did-start-loading', () => {
+            const tabElement = document.getElementById(`tab-${tabId}`);
             if (activeTabId === tabId) {
-                document.getElementById('url-input').value = "Loading...";
                 document.getElementById('loading-bar').classList.add('loading');
                 document.getElementById('loading-bar').classList.remove('complete');
             }
-            // Update tab to show loading spinner
-            const favicon = document.querySelector(`#tab-${tabId} .tab-favicon`);
-            if (favicon) {
-                favicon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            // Add loading class for subtle visual feedback
+            if (tabElement) {
+                tabElement.classList.add('loading');
             }
         });
 
         webview.addEventListener('did-finish-load', () => {
             const title = webview.getTitle() || 'New Tab';
+            const tabElement = document.getElementById(`tab-${tabId}`);
             const tabTitleEl = document.querySelector(`#tab-${tabId} .tab-title`);
             if (tabTitleEl) tabTitleEl.innerText = title;
+
+            // Remove loading state immediately
+            if (tabElement) {
+                tabElement.classList.remove('loading');
+            }
 
             if (activeTabId === tabId) {
                 const currentUrl = webview.getURL();
                 const urlInput = document.getElementById('url-input');
 
                 // Show placeholder instead of URL when on homepage
-                // Check if on custom homepage or normalized homepage match
                 const isCustomHomepage = currentUrl.includes('homepage.html');
                 const normalizeUrl = (url) => url.replace(/^https?:\/\//, '').replace(/^file:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
                 const isHomepage = isCustomHomepage || normalizeUrl(currentUrl) === normalizeUrl(settings.homePage);
 
                 urlInput.value = isHomepage ? '' : currentUrl;
 
-                document.getElementById('loading-bar').classList.remove('loading');
-                document.getElementById('loading-bar').classList.add('complete');
+                // Fast loading bar completion
+                const loadingBar = document.getElementById('loading-bar');
+                loadingBar.classList.remove('loading');
+                loadingBar.classList.add('complete');
                 setTimeout(() => {
-                    document.getElementById('loading-bar').classList.remove('complete');
-                    document.getElementById('loading-bar').style.width = '0';
-                }, 300);
+                    loadingBar.classList.remove('complete');
+                    loadingBar.style.width = '0';
+                }, 150);
 
                 this.updateSecurityIcon(currentUrl);
                 this.updateBookmarkButton(currentUrl);
@@ -92,8 +103,24 @@ class TabManager {
             this.addToHistory(webview.getURL(), title);
         });
 
-        webview.addEventListener('did-fail-load', () => {
+        webview.addEventListener('did-fail-load', (e) => {
+            const tabElement = document.getElementById(`tab-${tabId}`);
             document.getElementById('loading-bar').classList.remove('loading');
+            document.getElementById('loading-bar').style.width = '0';
+
+            // Remove loading state
+            if (tabElement) {
+                tabElement.classList.remove('loading');
+            }
+
+            // Only show error for main frame failures, not subframes
+            if (e.isMainFrame && e.errorCode !== -3) { // -3 is aborted, ignore it
+                console.log(`Page failed to load: ${e.errorDescription} (${e.errorCode})`);
+                const tabTitleEl = document.querySelector(`#tab-${tabId} .tab-title`);
+                if (tabTitleEl) {
+                    tabTitleEl.innerText = 'Failed to load';
+                }
+            }
         });
 
         webview.addEventListener('page-title-updated', (e) => {
@@ -118,7 +145,7 @@ class TabManager {
         tabElement.id = `tab-${tabId}`;
         tabElement.innerHTML = `
             <span class="tab-favicon"><i class="fas fa-globe"></i></span>
-            <span class="tab-title">Yarvix Tab</span>
+            <span class="tab-title">Yarvix Web</span>
             <span class="tab-close" title="Close Tab"><i class="fas fa-xmark"></i></span>
         `;
 
@@ -286,11 +313,19 @@ document.addEventListener('DOMContentLoaded', () => {
     tabManager = new TabManager();
     window.tabManager = tabManager;
 
-    // Apply theme
-    applyTheme(settings.theme);
+    // Apply theme and color theme
+    applyTheme(settings.theme, settings.colorTheme);
 
     // Apply bookmarks bar visibility
     document.getElementById('bookmarks-bar').style.display = settings.showBookmarksBar ? 'flex' : 'none';
+
+    // Initialize color palette selector
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.classList.toggle('active', swatch.dataset.color === settings.colorTheme);
+        swatch.addEventListener('click', () => {
+            applyColorTheme(swatch.dataset.color);
+        });
+    });
 
     // Create first tab
     tabManager.createTab();
@@ -442,7 +477,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('settings-modal').classList.remove('hidden');
         document.getElementById('pref-homepage').value = settings.homePage;
         document.getElementById('pref-search').value = settings.searchEngine;
-        document.getElementById('pref-theme').value = settings.theme;
         document.getElementById('pref-bookmarks-bar').checked = settings.showBookmarksBar;
     });
 
@@ -453,15 +487,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('save-settings-btn').addEventListener('click', () => {
         settings.homePage = document.getElementById('pref-homepage').value;
         settings.searchEngine = document.getElementById('pref-search').value;
-        settings.theme = document.getElementById('pref-theme').value;
         settings.showBookmarksBar = document.getElementById('pref-bookmarks-bar').checked;
 
         localStorage.setItem('homePage', settings.homePage);
         localStorage.setItem('searchEngine', settings.searchEngine);
-        localStorage.setItem('theme', settings.theme);
         localStorage.setItem('showBookmarksBar', settings.showBookmarksBar);
 
-        applyTheme(settings.theme);
         document.getElementById('bookmarks-bar').style.display = settings.showBookmarksBar ? 'flex' : 'none';
 
         document.getElementById('settings-modal').classList.add('hidden');
@@ -923,7 +954,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (key === 'theme') {
             settings.theme = value;
             localStorage.setItem('theme', value);
-            applyTheme(value);
+            applyTheme(value, settings.colorTheme);
+        } else if (key === 'colorTheme') {
+            settings.colorTheme = value;
+            localStorage.setItem('colorTheme', value);
+            applyColorTheme(value);
         } else if (key === 'searchEngine') {
             settings.searchEngine = value;
             localStorage.setItem('searchEngine', value);
@@ -986,7 +1021,7 @@ function setupPanelToggle(btnId, panelId, closeId) {
     });
 }
 
-function applyTheme(theme) {
+function applyTheme(theme, colorTheme = null) {
     if (theme === 'light') {
         document.body.classList.add('light-theme');
         document.body.classList.remove('dark-theme');
@@ -994,6 +1029,22 @@ function applyTheme(theme) {
         document.body.classList.remove('light-theme');
         document.body.classList.add('dark-theme');
     }
+
+    // Apply color theme
+    if (colorTheme) {
+        document.body.setAttribute('data-color-theme', colorTheme);
+    }
+}
+
+function applyColorTheme(colorTheme) {
+    document.body.setAttribute('data-color-theme', colorTheme);
+    settings.colorTheme = colorTheme;
+    localStorage.setItem('colorTheme', colorTheme);
+
+    // Update color palette selector UI
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.classList.toggle('active', swatch.dataset.color === colorTheme);
+    });
 }
 
 function renderHistory() {

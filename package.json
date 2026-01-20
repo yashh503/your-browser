@@ -1,12 +1,131 @@
 {
-  "name": "Yarvix-browser",
+  "name": "yarvixweb",
+  "productName": "YarvixWeb",
   "version": "1.0.0",
-  "description": "Yarvix - The Ultimate Stealth Browser",
+  "description": "YarvixWeb - The Ultimate Stealth Browser",
   "main": "main.js",
+  "author": {
+    "name": "Yash Vyas",
+    "email": "dev.yashvyas@gmail.com"
+  },
+  "private": true,
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder --mac --win --linux",
+    "pack": "electron-builder --dir",
+    "postinstall": "electron-builder install-app-deps",
+    "generate-icons": "electron-icon-builder --input=./build/icon.png --output=./build --flatten"
+  },
+  "build": {
+    "appId": "com.yarvixweb.browser",
+    "productName": "YarvixWeb",
+    "copyright": "Copyright © 2026 Yash Vyas",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!build/**",
+      "!.git/**",
+      "!.claude/**",
+      "!*.md"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "darkModeSupport": true,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "sign": false,
+      "identity": null,
+      "provisioningProfile": null
+    },
+    "dmg": {
+      "sign": false,
+      "title": "${productName} ${version}",
+      "icon": "build/icon.icns",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "YarvixWeb"
+    },
+    "linux": {
+      "icon": "build/icons",
+      "category": "Network",
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "desktop": {
+        "Name": "YarvixWeb",
+        "Comment": "YarvixWeb - The Ultimate Stealth Browser",
+        "Categories": "Network;WebBrowser;"
+      }
+    }
   },
   "devDependencies": {
-    "electron": "^28.0.0"
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "electron-icon-builder": "^2.0.1"
   }
 }

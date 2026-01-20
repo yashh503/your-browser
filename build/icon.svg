@@ -1,0 +1,42 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+             <linearGradient id="bg-gradient" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0D1B2E"/>
+            <stop offset="100%" stop-color="#050A14"/>
+        </linearGradient>
+        <linearGradient id="grad-left" x1="200" y1="200" x2="512" y2="600" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#D34A4A"/>
+            <stop offset="100%" stop-color="#9B1616"/>
+        </linearGradient>
+
+        <linearGradient id="grad-right" x1="824" y1="200" x2="512" y2="600" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF6B6B"/>
+            <stop offset="100%" stop-color="#D34A4A"/>
+        </linearGradient>
+
+        <linearGradient id="grad-bottom" x1="512" y1="500" x2="512" y2="900" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#9B1616"/>
+            <stop offset="100%" stop-color="#660B0B"/>
+        </linearGradient>
+        
+        <radialGradient id="center-glow" cx="512" cy="530" r="150" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FF7F7F" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="#FF7F7F" stop-opacity="0"/>
+        </radialGradient>
+    </defs>
+
+    <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg-gradient)"/>
+
+    <g transform="translate(512, 530) scale(1.1) translate(-512, -530)">
+        <path d="M512 530 L230 240 L380 240 L580 530 Z" fill="url(#grad-left)" opacity="0.95"/>
+        
+        <path d="M512 530 L794 240 L644 240 L444 530 Z" fill="url(#grad-right)" opacity="0.95"/>
+        
+        <path d="M512 450 L610 580 L512 820 L414 580 Z" fill="url(#grad-bottom)"/>
+        
+        <path d="M512 530 L444 530 L512 450 L580 530 Z" fill="#FF7F7F" opacity="0.3"/>
+    </g>
+    
+    <circle cx="512" cy="530" r="150" fill="url(#center-glow)" />
+
+</svg>

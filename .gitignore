@@ -1,5 +1,10 @@
 node_modules
 .env
 dist
-build
 .DS_Store
+
+# Keep build folder but ignore generated icons (they can be regenerated)
+build/icons/
+build/*.icns
+build/*.ico
+build/icon.png
