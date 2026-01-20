@@ -185,7 +185,9 @@ h3,
   border-radius: 8px 8px 0 0;
   margin-right: 1px;
   cursor: pointer;
-  transition: background 0.1s ease, border-color 0.1s ease;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
   position: relative;
   -webkit-app-region: no-drag;
   border: 1px solid transparent;
@@ -223,18 +225,28 @@ h3,
 }
 
 @keyframes tabPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .tab-favicon {
-  width: 16px;
-  height: 16px;
-  margin-right: 10px;
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.tab-favicon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .tab-favicon i {
@@ -271,7 +283,9 @@ h3,
   justify-content: center;
   margin-left: 6px;
   opacity: 0;
-  transition: opacity 0.1s ease, background 0.1s ease;
+  transition:
+    opacity 0.1s ease,
+    background 0.1s ease;
   flex-shrink: 0;
 }
 
@@ -417,8 +431,12 @@ body.light-theme #engine-select option {
 
 /* Fast, subtle loading indicator */
 @keyframes quickSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .tab-favicon .fa-spinner {
@@ -1002,7 +1020,9 @@ webview.active {
   border-radius: 10px;
   cursor: pointer;
   position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
   border: 2px solid transparent;
   padding: 3px;
   background: var(--bg-tertiary);
@@ -1021,7 +1041,9 @@ webview.active {
 
 .color-swatch.active {
   border-color: var(--text-primary);
-  box-shadow: 0 0 0 2px var(--bg-tertiary), 0 0 10px var(--accent-glow);
+  box-shadow:
+    0 0 0 2px var(--bg-tertiary),
+    0 0 10px var(--accent-glow);
 }
 
 .color-swatch.active::after {

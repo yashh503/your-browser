@@ -96,7 +96,7 @@ class TabManager {
             // Update favicon
             const favicon = document.querySelector(`#tab-${tabId} .tab-favicon`);
             if (favicon) {
-                favicon.innerHTML = '<i class="fas fa-globe"></i>';
+                favicon.innerHTML = '<span class="tab-favicon"><img src="icon.svg" alt="Capture alert"/></span>';
             }
 
             // Add to history
@@ -128,10 +128,6 @@ class TabManager {
             if (tabTitleEl) tabTitleEl.innerText = e.title;
         });
 
-        webview.addEventListener('new-window', (e) => {
-            this.createTab(e.url);
-        });
-
         document.getElementById('webview-container').appendChild(webview);
 
         // Setup webview listeners for homepage communication
@@ -144,7 +140,10 @@ class TabManager {
         tabElement.className = 'tab active';
         tabElement.id = `tab-${tabId}`;
         tabElement.innerHTML = `
-            <span class="tab-favicon"><i class="fas fa-globe"></i></span>
+            <span class="tab-favicon"><img
+        src="icon.svg"
+        alt="Capture alert"
+      /></span>
             <span class="tab-title">Yarvix Web</span>
             <span class="tab-close" title="Close Tab"><i class="fas fa-xmark"></i></span>
         `;
@@ -760,6 +759,11 @@ document.addEventListener('DOMContentLoaded', () => {
         tabManager.getActiveWebview()?.stopFindInPage('clearSelection');
     });
 
+    // Listen for requests to create a new tab with URL (from Cmd+click handling in main process)
+    ipcRenderer.on('create-tab-with-url', (_event, url) => {
+        tabManager.createTab(url);
+    });
+
     // Listen for keyboard shortcuts from main process (works even when webview has focus)
     ipcRenderer.on('browser-shortcut', (_event, { key, cmdOrCtrl, shift }) => {
         // Cmd/Ctrl + T - New Tab
@@ -1056,7 +1060,7 @@ function renderHistory() {
 
     list.innerHTML = history.slice(0, 50).map(item => `
         <div class="history-item" data-url="${item.url}">
-            <div class="history-item-icon"><i class="fas fa-globe"></i></div>
+            <div class="history-item-icon"><span class="tab-favicon"><img src="icon.svg" alt="Capture alert"/></span></div>
             <div class="history-item-info">
                 <div class="history-item-title">${item.title || 'Untitled'}</div>
                 <div class="history-item-url">${item.url}</div>

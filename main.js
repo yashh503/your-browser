@@ -235,6 +235,16 @@ app.whenReady().then(async () => {
   // Listen for keyboard shortcuts from ALL webContents (including webviews)
   // This is the reliable way to capture shortcuts when focus is inside a webview
   app.on('web-contents-created', (_event, contents) => {
+    // Handle new window requests (Cmd+click, target="_blank", window.open)
+    // This intercepts ALL new window requests from webviews and opens them in a new tab instead
+    contents.setWindowOpenHandler(({ url }) => {
+      // Send the URL to the renderer to create a new tab
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('create-tab-with-url', url);
+      }
+      return { action: 'deny' }; // Prevent the new window from being created
+    });
+
     contents.on('before-input-event', (event, input) => {
       if (input.type !== 'keyDown') return;
 
@@ -309,6 +319,14 @@ app.on('activate', () => {
 // IPC Handler for creating new window
 ipcMain.on('create-new-window', () => {
   createWindow();
+});
+
+// IPC Handler for opening URL in new tab (from Cmd+click)
+ipcMain.on('open-url-in-new-tab', (_event, url) => {
+  // Forward to the main window's renderer to create a new tab
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('create-tab-with-url', url);
+  }
 });
 
 // IPC Handler for clearing service worker data
