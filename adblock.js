@@ -1,5 +1,5 @@
 /**
- * YarvixWeb Ad Blocker Module
+ * YarvixBrowser Ad Blocker Module
  * Similar to Brave's Shields - blocks ads, trackers, and unwanted content
  */
 
@@ -704,7 +704,7 @@ class AdBlocker {
                   const valueLower = value.toLowerCase();
                   for (const pattern of blockedPatterns) {
                     if (valueLower.includes(pattern.toLowerCase())) {
-                      console.log('[YarvixWeb] Blocked YouTube ad script:', value);
+                      console.log('[YarvixBrowser] Blocked YouTube ad script:', value);
                       return;
                     }
                   }
@@ -728,7 +728,7 @@ class AdBlocker {
               ];
               for (const pattern of blockedPatterns) {
                 if (code.toLowerCase().includes(pattern.toLowerCase())) {
-                  console.log('[YarvixWeb] Blocked YouTube ad eval:', pattern);
+                  console.log('[YarvixBrowser] Blocked YouTube ad eval:', pattern);
                   return;
                 }
               }
@@ -756,7 +756,7 @@ class AdBlocker {
                 const urlLower = url.toLowerCase();
                 for (const pattern of blockedPatterns) {
                   if (urlLower.includes(pattern.toLowerCase())) {
-                    console.log('[YarvixWeb] Blocked YouTube ad fetch:', url);
+                    console.log('[YarvixBrowser] Blocked YouTube ad fetch:', url);
                     return new Response(new Blob(), { status: 403 });
                   }
                 }
@@ -783,7 +783,7 @@ class AdBlocker {
                 const urlLower = url.toLowerCase();
                 for (const pattern of blockedPatterns) {
                   if (urlLower.includes(pattern.toLowerCase())) {
-                    console.log('[YarvixWeb] Blocked YouTube ad XHR:', url);
+                    console.log('[YarvixBrowser] Blocked YouTube ad XHR:', url);
                     this.abort();
                     return;
                   }
@@ -1078,7 +1078,7 @@ class AdBlocker {
             url.includes('click') ||
             !url.includes(location.hostname)
           )) {
-            console.log('[YarvixWeb] Blocked popup:', url);
+            console.log('[YarvixBrowser] Blocked popup:', url);
             return null;
           }
           return originalOpen.call(window, url, name, features);
@@ -1095,7 +1095,7 @@ class AdBlocker {
                 const blockedDomains = ['doubleclick', 'googlesyndication', 'googleadservices', 'adsbygoogle', 'pagead', 'ima3', 'imasdk', 'vast', 'vmap', 'dai', 'preroll', 'midroll', 'postroll', 'player_ads', 'ytads', 'youtubeads', 'watermark', 'adfmt'];
                 for (const domain of blockedDomains) {
                   if (value.includes(domain)) {
-                    console.log('[YarvixWeb] Blocked script:', value);
+                    console.log('[YarvixBrowser] Blocked script:', value);
                     return;
                   }
                 }
@@ -1106,7 +1106,7 @@ class AdBlocker {
           return element;
         };
 
-        console.log('[YarvixWeb] Ad blocker active');
+        console.log('[YarvixBrowser] Ad blocker active');
       })();
     `;
   }

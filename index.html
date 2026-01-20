@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>YarvixWeb - Stealth Browser</title>
+    <title>YarvixBrowser - Stealth Browser</title>
     <link rel="stylesheet" href="style.css" />
     <link
       rel="stylesheet"
@@ -16,16 +16,6 @@
       <button id="new-tab-btn" title="New Tab">
         <i class="fas fa-plus"></i>
       </button>
-      
-      <div id="search-engine-switcher" title="Change Search Engine">
-        <div id="active-engine-icon"><i class="fab fa-google"></i></div>
-        <select id="engine-select">
-          <option value="https://www.google.com/search?q=">Google</option>
-          <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
-          <option value="https://www.bing.com/search?q=">Bing</option>
-        </select>
-        <i class="fas fa-chevron-down" id="engine-chevron"></i>
-      </div>
     </div>
 
     <!-- Navigation Bar -->
@@ -66,9 +56,6 @@
         </button>
         <button id="bookmarks-btn" title="Bookmarks">
           <i class="fas fa-bookmark"></i>
-        </button>
-        <button id="settings-btn" title="Settings">
-          <i class="fas fa-sliders"></i>
         </button>
       </div>
     </div>
@@ -183,7 +170,7 @@
         </div>
 
         <!-- Whitelist Section -->
-        <div class="shields-whitelist-section">
+        <!-- <div class="shields-whitelist-section">
           <div class="shields-section-header">
             <i class="fas fa-list-check"></i> Whitelist
             <span class="shields-whitelist-count" id="shields-whitelist-count">0 sites</span>
@@ -194,64 +181,16 @@
             </button>
           </div>
           <div id="shields-whitelist-list" class="shields-whitelist-list">
-            <!-- Whitelist items will be rendered here -->
           </div>
-        </div>
+        </div> -->
 
         <!-- Info Section -->
         <div class="shields-info">
-          <p><i class="fas fa-info-circle"></i> Shields block ads, trackers, and malicious content to protect your privacy and speed up browsing.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal hidden">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2><i class="fas fa-cog"></i> Settings</h2>
-          <button id="close-settings" class="modal-close">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <div class="settings-section">
-          <h3>General</h3>
-          <label>Homepage:</label>
-          <input type="text" id="pref-homepage" value="" />
-
-          <label>Search Engine:</label>
-          <select id="pref-search">
-            <option value="https://www.google.com/search?q=">Google</option>
-            <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
-            <option value="https://www.bing.com/search?q=">Bing</option>
-          </select>
-        </div>
-
-        <div class="settings-section">
-          <h3>Appearance</h3>
-          <p class="settings-hint">
-            <i class="fas fa-info-circle"></i>
-            Theme and color settings are available on the homepage for quick access.
+          <p>
+            <i class="fas fa-info-circle"></i> Shields block ads, trackers, and
+            malicious content to protect your privacy and speed up browsing.
           </p>
-
-          <label class="checkbox-label">
-            <input type="checkbox" id="pref-bookmarks-bar" checked />
-            Show bookmarks bar
-          </label>
         </div>
-
-        <div class="settings-section danger-zone">
-          <h3><i class="fas fa-exclamation-triangle"></i> Danger Zone</h3>
-          <p>This will clear all your settings, history, and bookmarks.</p>
-          <button id="clear-data-btn" class="danger-btn">
-            <i class="fas fa-trash"></i> Clear All Data
-          </button>
-        </div>
-        
-        <button id="save-settings-btn">
-          <i class="fas fa-save"></i> Save Changes
-        </button>
       </div>
     </div>
 

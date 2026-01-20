@@ -94,8 +94,11 @@
           margin-bottom: 40px;
       }
       .logo-sub-section {
-        display: flex;
+          display: flex;
           text-align: center;
+          justify-self: baseline;
+          justify-content: baseline;
+          justify-items: baseline;
       }
 
       .logo {
@@ -117,16 +120,16 @@
       }
       .logosub {
           font-family: 'Outfit', sans-serif;
-          font-size: 56px;
-          font-weight: 500;
+          font-size: 46px;
+          font-weight: 400;
           background: var(--text-primary);
           /* background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%); */
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
           letter-spacing: -2px;
-          margin-bottom: 8px;
-          margin-left: 5px;
+          margin-top: 10px;
+          margin-left: 7px;
       }
 
       .tagline {
@@ -638,10 +641,93 @@
           font-size: 11px;
       }
 
+      /* Danger Zone Styles */
+      .settings-group.danger-zone {
+          background: rgba(239, 68, 68, 0.05);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          border-radius: 12px;
+          margin: 8px 16px 16px;
+          padding: 16px 20px;
+      }
+
+      .settings-group-title.danger {
+          color: #ef4444;
+      }
+
+      .clear-data-section {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+      }
+
+      .clear-data-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+      }
+
+      .clear-data-options {
+          padding: 8px 0;
+      }
+
+      .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          cursor: pointer;
+          font-size: 13px;
+          color: var(--text-secondary);
+      }
+
+      .checkbox-label input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          accent-color: #ef4444;
+          cursor: pointer;
+      }
+
+      .checkbox-text {
+          user-select: none;
+      }
+
+      .clear-data-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 20px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 10px;
+          color: #ef4444;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+      }
+
+      .clear-data-btn:hover {
+          background: #ef4444;
+          border-color: #ef4444;
+          color: white;
+      }
+
+      .clear-data-btn:active {
+          transform: scale(0.98);
+      }
+
+      .clear-data-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+      }
+
       /* Responsive */
       @media (max-width: 640px) {
           .logo {
               font-size: 42px;
+          }
+          .logosub {
+              font-size: 34px;
           }
 
           .quick-links {
@@ -669,7 +755,7 @@
       <img class="logo-icon" src="icon.svg" alt="Capture alert" />
       <div class="logo-sub-section">
         <div class="logo">Yarvix</div>
-        <div class="logosub">Web</div>
+        <div class="logosub">Browser</div>
       </div>
       <div class="tagline">Private & Fast Browsing</div>
     </div>
@@ -847,6 +933,30 @@
               <div class="setting-description">Show quick access bookmarks</div>
             </div>
             <div class="toggle" id="bookmarks-toggle"></div>
+          </div>
+        </div>
+
+        <!-- Danger Zone - Clear Data -->
+        <div class="settings-group danger-zone">
+          <!-- <div class="settings-group-title danger">Danger Zone</div> -->
+          <div class="clear-data-section">
+            <div class="clear-data-info">
+              <span class="setting-label">Clear All Data</span>
+              <div class="setting-description">
+                Remove settings, history, and bookmarks
+              </div>
+            </div>
+            <div class="clear-data-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="clear-site-data-checkbox" />
+                <span class="checkbox-text"
+                  >Also clear site data (cookies, logins)</span
+                >
+              </label>
+            </div>
+            <button class="clear-data-btn" id="clear-all-data-btn">
+              <i class="fas fa-trash-alt"></i> Clear All Data
+            </button>
           </div>
         </div>
       </div>
@@ -1119,6 +1229,43 @@
 
       // Load settings on start
       loadSettings();
+
+      // Clear All Data handler
+      const clearAllDataBtn = document.getElementById('clear-all-data-btn');
+      const clearSiteDataCheckbox = document.getElementById('clear-site-data-checkbox');
+
+      clearAllDataBtn.addEventListener('click', () => {
+          const clearSiteData = clearSiteDataCheckbox.checked;
+
+          let message = 'This will permanently delete:\n\n• Settings & preferences\n• Browsing history\n• All bookmarks';
+          if (clearSiteData) {
+              message += '\n• Site data (cookies, logins)\n\nYou will be logged out of all websites.';
+          }
+          message += '\n\nThis action cannot be undone. Continue?';
+
+          if (confirm(message)) {
+              // Disable button during operation
+              clearAllDataBtn.disabled = true;
+              clearAllDataBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing...';
+
+              // Send clear data action to browser
+              sendToBrowser('clear-all-data', { clearSiteData: clearSiteData });
+
+              // Clear local storage in homepage context too
+              localStorage.clear();
+
+              // Show completion message after a short delay
+              setTimeout(() => {
+                  clearAllDataBtn.innerHTML = '<i class="fas fa-check"></i> Cleared!';
+                  setTimeout(() => {
+                      clearAllDataBtn.disabled = false;
+                      clearAllDataBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Clear All Data';
+                      // Reload the page to reflect cleared settings
+                      window.location.reload();
+                  }, 1500);
+              }, 500);
+          }
+      });
 
       // Focus search input
       setTimeout(() => searchInput.focus(), 100);

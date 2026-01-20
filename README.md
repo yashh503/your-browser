@@ -1,4 +1,4 @@
-# YarvixWeb Browser
+# YarvixBrowser Browser
 
 A private, fast, and customizable web browser built with Electron.
 
@@ -16,7 +16,7 @@ A private, fast, and customizable web browser built with Electron.
 
 ## Building for macOS (Personal Use - No Code Signing)
 
-This guide explains how to build YarvixWeb for your personal Mac without any certificates, signing, or notarization.
+This guide explains how to build YarvixBrowser for your personal Mac without any certificates, signing, or notarization.
 
 ### Prerequisites
 
@@ -71,33 +71,33 @@ After building, your app will be in the `dist` folder:
 
 ```
 dist/
-├── YarvixWeb-1.0.0-arm64.dmg      # DMG installer (Apple Silicon)
-├── YarvixWeb-1.0.0-x64.dmg        # DMG installer (Intel)
-├── YarvixWeb-1.0.0-arm64-mac.zip  # ZIP archive (Apple Silicon)
-├── YarvixWeb-1.0.0-x64-mac.zip    # ZIP archive (Intel)
+├── YarvixBrowser-1.0.0-arm64.dmg      # DMG installer (Apple Silicon)
+├── YarvixBrowser-1.0.0-x64.dmg        # DMG installer (Intel)
+├── YarvixBrowser-1.0.0-arm64-mac.zip  # ZIP archive (Apple Silicon)
+├── YarvixBrowser-1.0.0-x64-mac.zip    # ZIP archive (Intel)
 └── mac-arm64/                      # Unpacked app folder
-    └── YarvixWeb.app
+    └── YarvixBrowser.app
 ```
 
 ### Step 4: Install & Run the App
 
 **Option A: Using the DMG**
-1. Open `dist/YarvixWeb-1.0.0-arm64.dmg` (or x64 for Intel Mac)
-2. Drag YarvixWeb to Applications
+1. Open `dist/YarvixBrowser-1.0.0-arm64.dmg` (or x64 for Intel Mac)
+2. Drag YarvixBrowser to Applications
 3. First time opening: Right-click the app > "Open" > Click "Open" in the dialog
 
 **Option B: Direct from build folder**
 1. Navigate to `dist/mac-arm64/` (or `mac-x64/` for Intel)
-2. Double-click `YarvixWeb.app`
+2. Double-click `YarvixBrowser.app`
 3. If blocked: Right-click > "Open" > "Open"
 
 **Option C: Using Terminal**
 ```bash
 # Open directly from dist folder
-open dist/mac-arm64/YarvixWeb.app
+open dist/mac-arm64/YarvixBrowser.app
 
 # Or if moved to Applications
-open /Applications/YarvixWeb.app
+open /Applications/YarvixBrowser.app
 ```
 
 ---
@@ -107,7 +107,7 @@ open /Applications/YarvixWeb.app
 Since the app is unsigned, macOS may show security warnings. Here's how to handle them:
 
 ### Method 1: Right-Click Open (Recommended)
-1. Right-click (or Control+click) on `YarvixWeb.app`
+1. Right-click (or Control+click) on `YarvixBrowser.app`
 2. Select "Open" from the context menu
 3. Click "Open" in the dialog that appears
 
@@ -119,10 +119,10 @@ Since the app is unsigned, macOS may show security warnings. Here's how to handl
 ### Method 3: Remove Quarantine Flag (Terminal)
 ```bash
 # Remove quarantine attribute from the app
-xattr -cr /Applications/YarvixWeb.app
+xattr -cr /Applications/YarvixBrowser.app
 
 # Or if running from dist folder
-xattr -cr dist/mac-arm64/YarvixWeb.app
+xattr -cr dist/mac-arm64/YarvixBrowser.app
 ```
 
 ### Method 4: Disable Gatekeeper Temporarily (Not Recommended)
@@ -210,13 +210,13 @@ CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac
 ### "Cannot be opened because the developer cannot be verified"
 Use the terminal command:
 ```bash
-xattr -cr /path/to/YarvixWeb.app
+xattr -cr /path/to/YarvixBrowser.app
 ```
 
 ### App Crashes on Launch
 1. Delete the app's data folder:
    ```bash
-   rm -rf ~/Library/Application\ Support/YarvixWeb
+   rm -rf ~/Library/Application\ Support/YarvixBrowser
    ```
 2. Rebuild the app
 3. Try again

@@ -152,7 +152,7 @@ class TabManager {
         src="icon.svg"
         alt="Capture alert"
       /></span>
-            <span class="tab-title">Yarvix Web</span>
+            <span class="tab-title">Yarvix Browser</span>
             <span class="tab-close" title="Close Tab"><i class="fas fa-xmark"></i></span>
         `;
 
@@ -386,7 +386,7 @@ class TabManager {
                     const isYouTube = window.location.hostname.includes('youtube.com');
 
                     if (isYouTube) {
-                        console.log('[YarvixWeb] YouTube Ad Blocker Active');
+                        console.log('[YarvixBrowser] YouTube Ad Blocker Active');
 
                         // CSS to hide ad overlays ONLY (not the video player itself!)
                         const style = document.createElement('style');
@@ -462,7 +462,7 @@ class TabManager {
                                     adState.originalMuted = video.muted;
                                     adState.originalVolume = video.volume;
                                     adState.skipAttempts = 0;
-                                    console.log('[YarvixWeb] Ad detected, attempting to skip...');
+                                    console.log('[YarvixBrowser] Ad detected, attempting to skip...');
                                 }
 
                                 // Method 1: Click skip button (best method)
@@ -475,7 +475,7 @@ class TabManager {
                                 );
                                 if (skipBtn && skipBtn.offsetParent !== null) {
                                     skipBtn.click();
-                                    console.log('[YarvixWeb] Clicked skip button');
+                                    console.log('[YarvixBrowser] Clicked skip button');
                                     return;
                                 }
 
@@ -491,13 +491,13 @@ class TabManager {
                                     const targetTime = Math.max(0, video.duration - 0.5);
                                     if (video.currentTime < targetTime) {
                                         video.currentTime = targetTime;
-                                        console.log('[YarvixWeb] Fast-forwarding ad');
+                                        console.log('[YarvixBrowser] Fast-forwarding ad');
                                     }
                                 }
 
                             } else if (adState.wasAdPlaying) {
                                 // Ad just ended - restore normal playback
-                                console.log('[YarvixWeb] Ad ended, restoring playback');
+                                console.log('[YarvixBrowser] Ad ended, restoring playback');
                                 adState.wasAdPlaying = false;
 
                                 // Restore video settings
@@ -610,13 +610,13 @@ class TabManager {
                     const origOpen = window.open;
                     window.open = function(url) {
                         if (url && (url.includes('ad') || url.includes('popup') || url.includes('sponsor'))) {
-                            console.log('[YarvixWeb] Blocked popup:', url);
+                            console.log('[YarvixBrowser] Blocked popup:', url);
                             return null;
                         }
                         return origOpen.apply(window, arguments);
                     };
 
-                    console.log('[YarvixWeb] Ad Blocker Injection Complete');
+                    console.log('[YarvixBrowser] Ad Blocker Injection Complete');
                 })();
             `;
 
@@ -682,63 +682,6 @@ document.addEventListener('DOMContentLoaded', () => {
         tabManager.createTab(settings.homePage);
     });
 
-    // Search Engine Switcher
-    const engineSelect = document.getElementById('engine-select');
-    const engineIcon = document.getElementById('active-engine-icon');
-
-    const updateEngineUI = (url) => {
-        if (!engineIcon) return;
-
-        const urlInput = document.getElementById('url-input');
-        let engineName = 'Search';
-
-        // More specific checks - check for full domain names
-        if (url.includes('google.com')) {
-            engineIcon.innerHTML = '<i class="fab fa-google"></i>';
-            engineName = 'Google';
-        } else if (url.includes('duckduckgo')) {
-            engineIcon.innerHTML = '<i class="fas fa-mask"></i>'; // Privacy mask for DuckDuckGo
-            engineName = 'DuckDuckGo';
-        } else if (url.includes('bing')) {
-            engineIcon.innerHTML = '<i class="fab fa-microsoft"></i>';
-            engineName = 'Bing';
-        } else {
-            engineIcon.innerHTML = '<i class="fas fa-magnifying-glass"></i>';
-        }
-
-        // Update URL bar placeholder with search engine name
-        if (urlInput) {
-            urlInput.placeholder = `Search with ${engineName} or enter URL`;
-        }
-    };
-
-    // Initialize UI - set saved search engine
-    if (engineSelect && engineIcon) {
-        // Ensure the saved search engine value exists in the dropdown
-        const savedEngine = settings.searchEngine;
-        const optionExists = Array.from(engineSelect.options).some(opt => opt.value === savedEngine);
-
-        if (optionExists) {
-            engineSelect.value = savedEngine;
-        } else {
-            // Default to Google if saved value is invalid
-            engineSelect.value = 'https://www.google.com/search?q=';
-            settings.searchEngine = 'https://www.google.com/search?q=';
-            localStorage.setItem('searchEngine', settings.searchEngine);
-        }
-        updateEngineUI(settings.searchEngine);
-
-        engineSelect.addEventListener('change', (e) => {
-            settings.searchEngine = e.target.value;
-            localStorage.setItem('searchEngine', settings.searchEngine);
-            updateEngineUI(settings.searchEngine);
-
-            // Also update settings modal if it's open
-            const modalSearch = document.getElementById('pref-search');
-            if (modalSearch) modalSearch.value = settings.searchEngine;
-        });
-    }
-
     // URL Bar
     document.getElementById('url-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -801,63 +744,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPanelToggle('history-btn', 'history-panel', 'close-history');
     setupPanelToggle('bookmarks-btn', 'bookmarks-panel', 'close-bookmarks');
 
-    // Settings
-    document.getElementById('settings-btn').addEventListener('click', () => {
-        document.getElementById('settings-modal').classList.remove('hidden');
-        document.getElementById('pref-homepage').value = settings.homePage;
-        document.getElementById('pref-search').value = settings.searchEngine;
-        document.getElementById('pref-bookmarks-bar').checked = settings.showBookmarksBar;
-    });
-
-    document.getElementById('close-settings').addEventListener('click', () => {
-        document.getElementById('settings-modal').classList.add('hidden');
-    });
-
-    document.getElementById('save-settings-btn').addEventListener('click', () => {
-        settings.homePage = document.getElementById('pref-homepage').value;
-        settings.searchEngine = document.getElementById('pref-search').value;
-        settings.showBookmarksBar = document.getElementById('pref-bookmarks-bar').checked;
-
-        localStorage.setItem('homePage', settings.homePage);
-        localStorage.setItem('searchEngine', settings.searchEngine);
-        localStorage.setItem('showBookmarksBar', settings.showBookmarksBar);
-
-        document.getElementById('bookmarks-bar').style.display = settings.showBookmarksBar ? 'flex' : 'none';
-
-        document.getElementById('settings-modal').classList.add('hidden');
-
-        // Sync title bar engine switcher
-        const engineSelect = document.getElementById('engine-select');
-        const engineIcon = document.getElementById('active-engine-icon');
-        if (engineSelect) engineSelect.value = settings.searchEngine;
-        if (engineIcon) {
-            const url = settings.searchEngine;
-            if (url.includes('google.com')) {
-                engineIcon.innerHTML = '<i class="fab fa-google"></i>';
-            } else if (url.includes('duckduckgo')) {
-                engineIcon.innerHTML = '<i class="fas fa-mask"></i>';
-            } else if (url.includes('bing')) {
-                engineIcon.innerHTML = '<i class="fab fa-microsoft"></i>';
-            } else {
-                engineIcon.innerHTML = '<i class="fas fa-magnifying-glass"></i>';
-            }
-        }
-    });
-
     // Clear history
     document.getElementById('clear-history-btn').addEventListener('click', () => {
         history = [];
         localStorage.setItem('browserHistory', '[]');
         renderHistory();
-    });
-
-    // Clear all data (settings, history, bookmarks)
-    document.getElementById('clear-data-btn').addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear ALL data? This will reset your settings to defaults and remove all history and bookmarks. This cannot be undone!')) {
-            localStorage.clear();
-            alert('All data has been cleared. The browser will now restart.');
-            location.reload();
-        }
     });
 
     // Clear service worker data
@@ -1271,6 +1162,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = JSON.parse(event.message);
                     if (data.action === 'setting-changed') {
                         handleSettingChange(data.data);
+                    } else if (data.action === 'clear-all-data') {
+                        handleClearAllData(data.data);
                     }
                 }
             } catch (e) {
@@ -1296,15 +1189,45 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (key === 'searchEngine') {
             settings.searchEngine = value;
             localStorage.setItem('searchEngine', value);
-            // Update title bar engine switcher
-            const engineSelectEl = document.getElementById('engine-select');
-            if (engineSelectEl) engineSelectEl.value = value;
-            updateEngineUI(value);
         } else if (key === 'showBookmarksBar') {
             settings.showBookmarksBar = value;
             localStorage.setItem('showBookmarksBar', value);
             document.getElementById('bookmarks-bar').style.display = value ? 'flex' : 'none';
         }
+    }
+
+    function handleClearAllData(data) {
+        const { clearSiteData } = data;
+
+        // Clear browser data from localStorage
+        localStorage.removeItem('browserHistory');
+        localStorage.removeItem('bookmarks');
+        localStorage.removeItem('theme');
+        localStorage.removeItem('colorTheme');
+        localStorage.removeItem('searchEngine');
+        localStorage.removeItem('showBookmarksBar');
+        localStorage.removeItem('homePage');
+
+        // Reset in-memory state
+        history = [];
+        bookmarks = [];
+        settings.theme = 'dark';
+        settings.colorTheme = 'purple';
+        settings.searchEngine = 'https://www.google.com/search?q=';
+        settings.showBookmarksBar = true;
+
+        // Update UI
+        applyTheme('dark', 'purple');
+        document.getElementById('bookmarks-bar').style.display = 'flex';
+        renderHistory();
+        renderBookmarks();
+
+        // If clearSiteData is true, also clear site data (cookies, sessions, etc.)
+        if (clearSiteData) {
+            ipcRenderer.send('clear-site-data');
+        }
+
+        console.log('[YarvixBrowser] All browser data cleared' + (clearSiteData ? ' including site data' : ''));
     }
 
     // Make setupWebviewListeners available globally for new tabs
@@ -1319,12 +1242,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 panel.classList.add('hidden');
             }
         });
-
-        // Close settings modal when clicking on backdrop
-        const modal = document.getElementById('settings-modal');
-        if (!modal.classList.contains('hidden') && e.target === modal) {
-            modal.classList.add('hidden');
-        }
     });
 });
 

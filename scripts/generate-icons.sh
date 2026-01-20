@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Icon Generation Script for YarvixWeb
+# Icon Generation Script for YarvixBrowser
 # This script generates all required icon formats from the SVG source
 
 set -e
@@ -11,7 +11,7 @@ BUILD_DIR="$PROJECT_DIR/build"
 ICONS_DIR="$BUILD_DIR/icons"
 SVG_SOURCE="$BUILD_DIR/icon.svg"
 
-echo "🎨 Generating icons for YarvixWeb..."
+echo "🎨 Generating icons for YarvixBrowser..."
 
 # Check if source SVG exists
 if [ ! -f "$SVG_SOURCE" ]; then

@@ -211,7 +211,7 @@ h3,
   left: 8px;
   right: 8px;
   height: 2px;
-  background: var(--accent-color);
+  /* background: var(--accent-color); */
   border-radius: 0 0 2px 2px;
 }
 
@@ -1617,92 +1617,6 @@ webview.active {
   color: var(--text-secondary);
 }
 
-/* Whitelist Section */
-.shields-whitelist-section {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.shields-section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-}
-
-.shields-section-header i {
-  color: var(--accent-color);
-}
-
-.shields-whitelist-count {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-tertiary);
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.shields-whitelist-actions {
-  margin-bottom: 12px;
-}
-
-.shields-btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.shields-btn.primary {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-}
-
-.shields-btn.primary:hover {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-}
-
-.shields-btn.secondary {
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-.shields-btn.secondary:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent-color);
-}
-
-.shields-btn.danger {
-  background: transparent;
-  color: var(--error-color);
-  border: 1px solid var(--error-color);
-}
-
-.shields-btn.danger:hover {
-  background: var(--error-color);
-  color: white;
-}
-
-/* Whitelist Items */
-.shields-whitelist-list {
-  max-height: 150px;
-  overflow-y: auto;
-}
 
 .shields-whitelist-item {
   display: flex;

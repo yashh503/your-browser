@@ -461,3 +461,35 @@ ipcMain.on('adblock-get-content-script', () => {
     enabled: adBlocker.enabled
   });
 });
+
+// IPC Handler for clearing all site data (cookies, sessions, storage)
+ipcMain.on('clear-site-data', async () => {
+  try {
+    const defaultSession = session.defaultSession;
+
+    // Clear all storage data
+    await defaultSession.clearStorageData({
+      storages: [
+        'cookies',
+        'localstorage',
+        'sessionstorage',
+        'indexdb',
+        'websql',
+        'serviceworkers',
+        'cachestorage'
+      ]
+    });
+
+    // Clear cache
+    await defaultSession.clearCache();
+
+    // Clear auth cache
+    await defaultSession.clearAuthCache();
+
+    console.log('[YarvixBrowser] All site data cleared successfully');
+    mainWindow?.webContents.send('site-data-cleared', { success: true });
+  } catch (error) {
+    console.error('[YarvixBrowser] Error clearing site data:', error);
+    mainWindow?.webContents.send('site-data-cleared', { success: false, error: error.message });
+  }
+});
