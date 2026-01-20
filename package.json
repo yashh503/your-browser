@@ -22,7 +22,7 @@
   },
   "build": {
     "appId": "com.yarvix.browser",
-    "productName": "YarvixBrowser",
+    "productName": "Yarvix Browser",
     "copyright": "Copyright © 2026 Yash Vyas",
     "directories": {
       "output": "dist",
