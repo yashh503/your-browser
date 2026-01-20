@@ -3,6 +3,10 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execSync } = require('child_process');
+const { AdBlocker, AD_DOMAINS, BLOCK_PATTERNS } = require('./adblock');
+
+// Initialize Ad Blocker
+const adBlocker = new AdBlocker();
 
 // Use a real Chrome User-Agent to make websites work normally
 const CHROME_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -224,6 +228,49 @@ app.whenReady().then(async () => {
     callback({ requestHeaders: details.requestHeaders });
   });
 
+  // ========================================
+  // AD BLOCKER - Request Filtering
+  // ========================================
+  defaultSession.webRequest.onBeforeRequest((details, callback) => {
+    // Skip if ad blocker is disabled
+    if (!adBlocker.enabled) {
+      callback({ cancel: false });
+      return;
+    }
+
+    const url = details.url;
+    const resourceType = details.resourceType;
+
+    // Skip first-party main frame requests
+    if (resourceType === 'mainFrame') {
+      callback({ cancel: false });
+      return;
+    }
+
+    // Check if URL should be blocked
+    const shouldBlock = adBlocker.shouldBlock(url, details.referrer || '');
+
+    if (shouldBlock) {
+      // Record the blocked request
+      adBlocker.recordBlocked(details.webContentsId?.toString() || 'unknown');
+
+      // Send update to renderer
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('ad-blocked', {
+          url: url,
+          type: resourceType,
+          webContentsId: details.webContentsId?.toString() || null,
+          stats: adBlocker.getStats()
+        });
+      }
+
+      callback({ cancel: true });
+      return;
+    }
+
+    callback({ cancel: false });
+  });
+
   // Handle certificate errors more gracefully (like Chrome does)
   defaultSession.setCertificateVerifyProc((request, callback) => {
     // Accept valid certificates
@@ -363,4 +410,54 @@ ipcMain.on('get-service-worker-info', async () => {
   } catch (error) {
     mainWindow?.webContents.send('service-worker-info', { count: 0 });
   }
+});
+
+// ========================================
+// AD BLOCKER IPC HANDLERS
+// ========================================
+
+// Toggle ad blocker on/off
+ipcMain.on('adblock-toggle', () => {
+  const newState = adBlocker.toggle();
+  mainWindow?.webContents.send('adblock-state-changed', {
+    enabled: newState,
+    stats: adBlocker.getStats()
+  });
+});
+
+// Get ad blocker stats
+ipcMain.on('adblock-get-stats', () => {
+  mainWindow?.webContents.send('adblock-stats', adBlocker.getStats());
+});
+
+// Add domain to whitelist
+ipcMain.on('adblock-whitelist-add', (_event, domain) => {
+  adBlocker.addToWhitelist(domain);
+  mainWindow?.webContents.send('adblock-whitelist-updated', {
+    whitelist: Array.from(adBlocker.whitelist)
+  });
+});
+
+// Remove domain from whitelist
+ipcMain.on('adblock-whitelist-remove', (_event, domain) => {
+  adBlocker.removeFromWhitelist(domain);
+  mainWindow?.webContents.send('adblock-whitelist-updated', {
+    whitelist: Array.from(adBlocker.whitelist)
+  });
+});
+
+// Get whitelist
+ipcMain.on('adblock-get-whitelist', () => {
+  mainWindow?.webContents.send('adblock-whitelist', {
+    whitelist: Array.from(adBlocker.whitelist)
+  });
+});
+
+// Get content script for injection
+ipcMain.on('adblock-get-content-script', () => {
+  mainWindow?.webContents.send('adblock-content-script', {
+    script: adBlocker.getContentScript(),
+    css: adBlocker.getCosmeticFilterCSS(),
+    enabled: adBlocker.enabled
+  });
 });

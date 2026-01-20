@@ -303,6 +303,34 @@ h3,
   color: var(--text-primary);
 }
 
+/* Per-Tab Shield Badge */
+/* .tab-shield-badge {
+  position: absolute;
+  top: 4px;
+  right: 40px;
+  min-width: 16px;
+  height: 16px;
+  background: var(--accent-color);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+} */
+
+/* .tab.active .tab-shield-badge {
+  background: var(--accent-color);
+}
+
+.tab.loading .tab-shield-badge {
+  opacity: 0.7;
+} */
+
 #new-tab-btn {
   background: transparent;
   border: none;
@@ -1363,4 +1391,422 @@ webview.active {
 
 .empty-state p {
   font-size: 14px;
+}
+
+/* ========================================
+   Shields (Ad Blocker) Styles
+   ======================================== */
+
+/* Shield Button in Toolbar */
+#shield-btn {
+  position: relative;
+}
+
+#shield-btn.shield-active {
+  color: var(--success-color);
+}
+
+#shield-btn.shield-active:hover {
+  color: var(--success-color);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+#shield-btn.shield-disabled {
+  color: var(--text-secondary);
+}
+
+#shield-btn.shield-disabled:hover {
+  color: var(--warning-color);
+}
+
+.shield-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  background: var(--accent-color);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s ease;
+}
+
+.shield-count.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Shields Panel */
+#shields-panel {
+  width: 360px;
+  max-height: 600px;
+}
+
+.shields-content {
+  padding: 0;
+}
+
+/* Toggle Section */
+.shields-toggle-section {
+  padding: 20px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.shields-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.shields-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shields-toggle-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shields-toggle-site {
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+  border-radius: 28px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-secondary);
+  transition: all 0.3s ease;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+  background-color: white;
+}
+
+/* Shields Status */
+.shields-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--success-color);
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 8px;
+}
+
+.shields-status.disabled {
+  color: var(--warning-color);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.shields-status i {
+  font-size: 14px;
+}
+
+/* Stats Section */
+.shields-stats {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.shields-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.shields-stat-item:hover {
+  border-color: var(--accent-color);
+}
+
+.shields-stat-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--accent-glow);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.shields-stat-icon i {
+  font-size: 16px;
+  color: var(--accent-color);
+}
+
+.shields-stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shields-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: "Outfit", sans-serif;
+}
+
+.shields-stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Whitelist Section */
+.shields-whitelist-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.shields-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.shields-section-header i {
+  color: var(--accent-color);
+}
+
+.shields-whitelist-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.shields-whitelist-actions {
+  margin-bottom: 12px;
+}
+
+.shields-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.shields-btn.primary {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+}
+
+.shields-btn.primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.shields-btn.secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.shields-btn.secondary:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-color);
+}
+
+.shields-btn.danger {
+  background: transparent;
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+}
+
+.shields-btn.danger:hover {
+  background: var(--error-color);
+  color: white;
+}
+
+/* Whitelist Items */
+.shields-whitelist-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.shields-whitelist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.shields-whitelist-item:last-child {
+  margin-bottom: 0;
+}
+
+.shields-whitelist-domain {
+  font-size: 13px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shields-whitelist-domain i {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.shields-whitelist-remove {
+  background: transparent;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.shields-whitelist-remove:hover {
+  background: var(--error-color);
+  color: white;
+}
+
+.shields-whitelist-empty {
+  text-align: center;
+  padding: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Info Section */
+.shields-info {
+  padding: 16px 20px;
+}
+
+.shields-info p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: flex;
+  gap: 8px;
+}
+
+.shields-info i {
+  color: var(--accent-color);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Animation for blocked count */
+@keyframes countPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.shield-count.pulse {
+  animation: countPulse 0.3s ease;
+}
+
+/* Light theme adjustments for shields */
+body.light-theme .shields-toggle-section {
+  background: var(--bg-secondary);
+}
+
+body.light-theme .shields-stat-item {
+  background: var(--bg-secondary);
+}
+
+body.light-theme .shields-whitelist-item {
+  background: var(--bg-secondary);
+}
+
+body.light-theme .toggle-slider {
+  background-color: var(--bg-tertiary);
 }

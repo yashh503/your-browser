@@ -101,6 +101,14 @@ class TabManager {
 
             // Add to history
             this.addToHistory(webview.getURL(), title);
+
+            // Inject ad blocker content script
+            this.injectAdBlocker(webview, tabId);
+        });
+
+        // Also inject on dom-ready for faster blocking
+        webview.addEventListener('dom-ready', () => {
+            this.injectAdBlocker(webview, tabId);
         });
 
         webview.addEventListener('did-fail-load', (e) => {
@@ -303,6 +311,323 @@ class TabManager {
             forwardBtn.disabled = true;
         }
     }
+
+    /**
+     * Update the shield count badge for a specific tab
+     * @param {string} tabId - The tab ID
+     * @param {number} count - Number of blocked ads
+     */
+    // updateTabShieldCount(tabId, count) {
+    //     const tabElement = document.getElementById(`tab-${tabId}`);
+    //     if (!tabElement) return;
+
+    //     let badge = tabElement.querySelector('.tab-shield-badge');
+        
+    //     if (count > 0) {
+    //         if (!badge) {
+    //             badge = document.createElement('span');
+    //             badge.className = 'tab-shield-badge';
+    //             tabElement.appendChild(badge);
+    //         }
+    //         badge.textContent = count;
+    //         badge.style.display = 'flex';
+    //     } else if (badge) {
+    //         badge.style.display = 'none';
+    //     }
+
+    //     // Update shield button count if this is the active tab
+    //     if (tabId === activeTabId) {
+    //         updateShieldButtonCount(count);
+    //     }
+    // }
+
+    /**
+     * Reset shield count for a tab (called on navigation)
+     * @param {string} tabId - The tab ID
+     */
+    // resetTabShieldCount(tabId) {
+    //     this.updateTabShieldCount(tabId, 0);
+    // }
+
+    /**
+     * Get the current tab's shield count
+     * @returns {number}
+     */
+    getCurrentTabShieldCount() {
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (tab) {
+            const badge = tab.tabElement.querySelector('.tab-shield-badge');
+            return badge ? parseInt(badge.textContent) || 0 : 0;
+        }
+        return 0;
+    }
+
+    /**
+     * Inject ad blocker content script into webview
+     * @param {HTMLElement} webview - The webview element
+     * @param {number} tabId - The tab ID
+     */
+    injectAdBlocker(webview, tabId) {
+        try {
+            const currentUrl = webview.getURL();
+
+            // Skip injection for local files and homepage
+            if (!currentUrl || currentUrl.startsWith('file://') || currentUrl === 'about:blank') {
+                return;
+            }
+
+            // Inject the YouTube ad blocker script
+            const youtubeAdBlockScript = `
+                (function() {
+                    // Skip if already injected
+                    if (window.__yarvixAdBlockerInjected) return;
+                    window.__yarvixAdBlockerInjected = true;
+
+                    const isYouTube = window.location.hostname.includes('youtube.com');
+
+                    if (isYouTube) {
+                        console.log('[YarvixWeb] YouTube Ad Blocker Active');
+
+                        // CSS to hide ad overlays ONLY (not the video player itself!)
+                        const style = document.createElement('style');
+                        style.textContent = \`
+                            /* Hide ad overlays and banners - BUT NOT the video player */
+                            .ytp-ad-overlay-container,
+                            .ytp-ad-text-overlay,
+                            .ytp-ad-overlay-slot,
+                            .ytp-ad-overlay-image,
+                            .ytp-ad-image-overlay,
+                            .ytp-ad-preview-container,
+                            .ytp-ad-preview-slot,
+                            .ytp-ad-message-container,
+                            #player-ads,
+                            #masthead-ad,
+                            ytd-ad-slot-renderer,
+                            ytd-banner-promo-renderer,
+                            ytd-video-masthead-ad-v3-renderer,
+                            ytd-in-feed-ad-layout-renderer,
+                            ytd-display-ad-renderer,
+                            ytd-companion-slot-renderer,
+                            ytd-promoted-sparkles-web-renderer,
+                            ytd-promoted-video-renderer,
+                            ytd-search-pyv-renderer,
+                            .ytd-mealbar-promo-renderer,
+                            .ytd-statement-banner-renderer,
+                            #merch-shelf,
+                            ytd-merch-shelf-renderer,
+                            .ytp-suggested-action,
+                            .ytp-suggested-action-badge,
+                            .ytp-cards-teaser,
+                            .iv-branding,
+                            .annotation,
+                            ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-ads"],
+                            yt-mealbar-promo-renderer,
+                            #related ytd-promoted-sparkles-web-renderer,
+                            #related ytd-display-ad-renderer,
+                            ytd-search ytd-ad-slot-renderer,
+                            ytd-rich-item-renderer:has(ytd-ad-slot-renderer),
+                            ytd-rich-section-renderer:has(ytd-ad-slot-renderer)
+                            { display: none !important; }
+                        \`;
+                        document.head.appendChild(style);
+
+                        // Track state for ad skipping
+                        let adState = {
+                            wasAdPlaying: false,
+                            originalMuted: false,
+                            originalVolume: 1,
+                            skipAttempts: 0
+                        };
+
+                        // Function to check if ad is playing
+                        const isAdPlaying = () => {
+                            const player = document.querySelector('.html5-video-player');
+                            return player && player.classList.contains('ad-showing');
+                        };
+
+                        // Function to skip/handle ads
+                        const handleAd = () => {
+                            const video = document.querySelector('video');
+                            const player = document.querySelector('.html5-video-player');
+
+                            if (!video || !player) return;
+
+                            const adPlaying = isAdPlaying();
+
+                            if (adPlaying) {
+                                // Ad is playing
+                                if (!adState.wasAdPlaying) {
+                                    // Just started - save original state
+                                    adState.wasAdPlaying = true;
+                                    adState.originalMuted = video.muted;
+                                    adState.originalVolume = video.volume;
+                                    adState.skipAttempts = 0;
+                                    console.log('[YarvixWeb] Ad detected, attempting to skip...');
+                                }
+
+                                // Method 1: Click skip button (best method)
+                                const skipBtn = document.querySelector(
+                                    '.ytp-ad-skip-button, ' +
+                                    '.ytp-ad-skip-button-modern, ' +
+                                    '.ytp-skip-ad-button, ' +
+                                    '.ytp-ad-skip-button-slot button, ' +
+                                    'button[class*="skip"]'
+                                );
+                                if (skipBtn && skipBtn.offsetParent !== null) {
+                                    skipBtn.click();
+                                    console.log('[YarvixWeb] Clicked skip button');
+                                    return;
+                                }
+
+                                // Method 2: Mute and speed up the ad (let it play fast)
+                                video.muted = true;
+                                video.playbackRate = 16;
+
+                                // Method 3: If video has duration, skip near end
+                                // BUT don't skip to exact end to avoid "ended" state
+                                adState.skipAttempts++;
+                                if (adState.skipAttempts > 5 && video.duration && isFinite(video.duration) && video.duration > 1) {
+                                    // Skip to 0.5 seconds before end to trigger natural transition
+                                    const targetTime = Math.max(0, video.duration - 0.5);
+                                    if (video.currentTime < targetTime) {
+                                        video.currentTime = targetTime;
+                                        console.log('[YarvixWeb] Fast-forwarding ad');
+                                    }
+                                }
+
+                            } else if (adState.wasAdPlaying) {
+                                // Ad just ended - restore normal playback
+                                console.log('[YarvixWeb] Ad ended, restoring playback');
+                                adState.wasAdPlaying = false;
+
+                                // Restore video settings
+                                video.playbackRate = 1;
+                                video.muted = adState.originalMuted;
+                                video.volume = adState.originalVolume;
+
+                                // Make sure video plays
+                                setTimeout(() => {
+                                    const v = document.querySelector('video');
+                                    if (v) {
+                                        v.playbackRate = 1;
+                                        v.muted = adState.originalMuted;
+                                        if (v.paused) {
+                                            v.play().catch(() => {
+                                                // Click play button as fallback
+                                                const playBtn = document.querySelector('.ytp-play-button');
+                                                if (playBtn) playBtn.click();
+                                            });
+                                        }
+                                    }
+                                }, 100);
+
+                            } else {
+                                // No ad - ensure normal playback
+                                if (video.playbackRate > 1) {
+                                    video.playbackRate = 1;
+                                }
+                            }
+
+                            // Remove overlay ads
+                            document.querySelectorAll(
+                                '.ytp-ad-overlay-container, .ytp-ad-text-overlay'
+                            ).forEach(el => el.remove());
+                        };
+
+                        // Run ad handler frequently
+                        setInterval(handleAd, 250);
+
+                        // Also run on mutations
+                        const adObserver = new MutationObserver(() => {
+                            handleAd();
+                        });
+                        adObserver.observe(document.body, {
+                            childList: true,
+                            subtree: true,
+                            attributes: true,
+                            attributeFilter: ['class']
+                        });
+
+                        // Override YouTube's ad data on page load
+                        const blockAdData = () => {
+                            try {
+                                if (window.ytInitialPlayerResponse) {
+                                    if (window.ytInitialPlayerResponse.adPlacements) {
+                                        window.ytInitialPlayerResponse.adPlacements = [];
+                                    }
+                                    if (window.ytInitialPlayerResponse.playerAds) {
+                                        window.ytInitialPlayerResponse.playerAds = [];
+                                    }
+                                    if (window.ytInitialPlayerResponse.adSlots) {
+                                        window.ytInitialPlayerResponse.adSlots = [];
+                                    }
+                                }
+                            } catch(e) {}
+                        };
+
+                        blockAdData();
+
+                        // Re-run on SPA navigation
+                        let lastUrl = location.href;
+                        setInterval(() => {
+                            if (location.href !== lastUrl) {
+                                lastUrl = location.href;
+                                blockAdData();
+                                // Reset ad state on navigation
+                                adState.wasAdPlaying = false;
+                            }
+                        }, 1000);
+
+                    } else {
+                        // Generic ad blocking for other sites
+                        const style = document.createElement('style');
+                        style.textContent = \`
+                            [id*="google_ads"], [id*="doubleclick"], [class*="ad-container"],
+                            [class*="ad-wrapper"], [class*="ad-banner"], [class*="ad-slot"],
+                            [class*="advertisement"], [data-ad], [data-ad-slot],
+                            .adsbygoogle, .ad-placement, .sponsored, .promoted,
+                            iframe[src*="doubleclick"], iframe[src*="googlesyndication"],
+                            iframe[src*="adservice"]
+                            { display: none !important; }
+                        \`;
+                        document.head.appendChild(style);
+
+                        // Remove ad elements
+                        const removeAds = () => {
+                            document.querySelectorAll(
+                                '[id*="google_ads"], [class*="ad-container"], [class*="ad-banner"], ' +
+                                '.adsbygoogle, [data-ad], iframe[src*="doubleclick"]'
+                            ).forEach(el => el.remove());
+                        };
+
+                        removeAds();
+
+                        const observer = new MutationObserver(removeAds);
+                        observer.observe(document.body, { childList: true, subtree: true });
+                    }
+
+                    // Block popup windows
+                    const origOpen = window.open;
+                    window.open = function(url) {
+                        if (url && (url.includes('ad') || url.includes('popup') || url.includes('sponsor'))) {
+                            console.log('[YarvixWeb] Blocked popup:', url);
+                            return null;
+                        }
+                        return origOpen.apply(window, arguments);
+                    };
+
+                    console.log('[YarvixWeb] Ad Blocker Injection Complete');
+                })();
+            `;
+
+            webview.executeJavaScript(youtubeAdBlockScript).catch(err => {
+                // Silently fail - some pages may block script execution
+            });
+
+        } catch (err) {
+            console.error('Failed to inject ad blocker:', err);
+        }
+    }
 }
 
 /**
@@ -325,6 +650,11 @@ document.addEventListener('DOMContentLoaded', () => {
             applyColorTheme(swatch.dataset.color);
         });
     });
+
+    // Initialize Ad Blocker UI and listeners
+    setupShieldButton();
+    setupShieldsPanelListeners();
+    setupAdBlockerListeners();
 
     // Create first tab
     tabManager.createTab();
@@ -1017,12 +1347,299 @@ function setupPanelToggle(btnId, panelId, closeId) {
         if (!panel.classList.contains('hidden')) {
             if (panelId === 'history-panel') renderHistory();
             if (panelId === 'bookmarks-panel') renderBookmarks();
+            if (panelId === 'shields-panel') refreshShieldsPanel();
         }
     });
 
     closeBtn.addEventListener('click', () => {
         panel.classList.add('hidden');
     });
+}
+
+/**
+ * Shield button click handler - toggle shields panel
+ */
+function setupShieldButton() {
+    const shieldBtn = document.getElementById('shield-btn');
+    const closeBtn = document.getElementById('close-shields');
+
+    shieldBtn.addEventListener('click', () => {
+        // Close other panels
+        document.querySelectorAll('.panel').forEach(p => {
+            if (p.id !== 'shields-panel') p.classList.add('hidden');
+        });
+        document.getElementById('shields-panel').classList.toggle('hidden');
+        
+        // Refresh shields panel when opening
+        if (!document.getElementById('shields-panel').classList.contains('hidden')) {
+            refreshShieldsPanel();
+        }
+    });
+
+    closeBtn.addEventListener('click', () => {
+        document.getElementById('shields-panel').classList.add('hidden');
+    });
+}
+
+/**
+ * Refresh the shields panel with current data
+ */
+function refreshShieldsPanel() {
+    // Request current stats from main process
+    ipcRenderer.send('adblock-get-stats');
+    ipcRenderer.send('adblock-get-whitelist');
+    
+    // Update current site display
+    const activeWebview = tabManager.getActiveWebview();
+    if (activeWebview) {
+        try {
+            const url = activeWebview.getURL();
+            if (url && url !== 'about:blank') {
+                try {
+                    const hostname = new URL(url).hostname;
+                    document.getElementById('shields-current-site').textContent = hostname;
+                } catch {
+                    document.getElementById('shields-current-site').textContent = 'All sites';
+                }
+            } else {
+                document.getElementById('shields-current-site').textContent = 'New Tab';
+            }
+        } catch {
+            document.getElementById('shields-current-site').textContent = 'All sites';
+        }
+    }
+}
+
+/**
+ * Update shield button UI based on state
+ * @param {boolean} enabled - Whether ad blocker is enabled
+ * @param {number} count - Number of blocked ads in current tab
+ */
+function updateShieldUI(enabled, count = 0) {
+    const shieldBtn = document.getElementById('shield-btn');
+    const shieldToggle = document.getElementById('shields-toggle');
+    const shieldStatus = document.getElementById('shields-status');
+    
+    // Update button style
+    if (enabled) {
+        shieldBtn.classList.remove('shield-disabled');
+        shieldBtn.classList.add('shield-active');
+    } else {
+        shieldBtn.classList.remove('shield-active');
+        shieldBtn.classList.add('shield-disabled');
+    }
+    
+    // Update toggle switch
+    if (shieldToggle) {
+        shieldToggle.checked = enabled;
+    }
+    
+    // Update status text
+    if (shieldStatus) {
+        if (enabled) {
+            shieldStatus.innerHTML = '<i class="fas fa-check-circle"></i> Protection active';
+            shieldStatus.classList.remove('disabled');
+        } else {
+            shieldStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Protection disabled';
+            shieldStatus.classList.add('disabled');
+        }
+    }
+    
+    // Update shield count
+    updateShieldButtonCount(count);
+}
+
+/**
+ * Update shield button count badge
+ * @param {number} count - Number of blocked ads
+ */
+function updateShieldButtonCount(count) {
+    const shieldCount = document.getElementById('shield-count');
+    if (shieldCount) {
+        shieldCount.textContent = count > 0 ? count : '0';
+        shieldCount.classList.toggle('visible', count > 0);
+    }
+}
+
+/**
+ * Render whitelist in shields panel
+ * @param {Array} whitelist - List of whitelisted domains
+ */
+function renderWhitelist(whitelist) {
+    const container = document.getElementById('shields-whitelist-list');
+    const countEl = document.getElementById('shields-whitelist-count');
+    
+    if (!container) return;
+    
+    // Update count
+    if (countEl) {
+        countEl.textContent = `${whitelist.length} site${whitelist.length !== 1 ? 's' : ''}`;
+    }
+    
+    if (whitelist.length === 0) {
+        container.innerHTML = '<div class="shields-whitelist-empty">No whitelisted sites</div>';
+        return;
+    }
+    
+    container.innerHTML = whitelist.map(domain => `
+        <div class="shields-whitelist-item" data-domain="${domain}">
+            <span class="shields-whitelist-domain">
+                <i class="fas fa-globe"></i>
+                ${domain}
+            </span>
+            <button class="shields-whitelist-remove" title="Remove from whitelist">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+    
+    // Add remove handlers
+    container.querySelectorAll('.shields-whitelist-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const domain = btn.closest('.shields-whitelist-item').dataset.domain;
+            ipcRenderer.send('adblock-whitelist-remove', domain);
+        });
+    });
+}
+
+/**
+ * Add current site to whitelist
+ */
+function whitelistCurrentSite() {
+    const activeWebview = tabManager.getActiveWebview();
+    if (!activeWebview) return;
+    
+    try {
+        const url = activeWebview.getURL();
+        if (!url || url === 'about:blank' || url.includes('homepage.html')) {
+            alert('Cannot whitelist this page');
+            return;
+        }
+        
+        const hostname = new URL(url).hostname;
+        ipcRenderer.send('adblock-whitelist-add', hostname);
+        
+        // Update UI
+        const btn = document.getElementById('shields-whitelist-site');
+        if (btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Added!';
+            btn.disabled = true;
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 1500);
+        }
+    } catch (err) {
+        console.error('Failed to whitelist site:', err);
+    }
+}
+
+/**
+ * Update shields stats display
+ * @param {Object} stats - Ad blocker stats
+ */
+function updateShieldsStats(stats) {
+    // Update shields panel stats
+    const blockedCount = document.getElementById('shields-blocked-count');
+    const totalBlocked = document.getElementById('shields-total-blocked');
+    
+    if (blockedCount) {
+        blockedCount.textContent = stats.sessionBlocked || 0;
+    }
+    
+    if (totalBlocked) {
+        totalBlocked.textContent = stats.totalBlocked || 0;
+    }
+    
+    // Update shield button count with current tab's stats
+    const currentCount = tabManager.getCurrentTabShieldCount();
+    updateShieldButtonCount(currentCount);
+}
+
+/**
+ * Pulse animation when ad is blocked
+ */
+function pulseShieldCount() {
+    const shieldCount = document.getElementById('shield-count');
+    if (shieldCount) {
+        shieldCount.classList.add('pulse');
+        setTimeout(() => shieldCount.classList.remove('pulse'), 300);
+    }
+}
+
+/**
+ * Setup shield panel event listeners
+ */
+function setupShieldsPanelListeners() {
+    // Toggle switch handler
+    const shieldsToggle = document.getElementById('shields-toggle');
+    if (shieldsToggle) {
+        shieldsToggle.addEventListener('change', () => {
+            ipcRenderer.send('adblock-toggle');
+        });
+    }
+    
+    // Whitelist current site button
+    const whitelistBtn = document.getElementById('shields-whitelist-site');
+    if (whitelistBtn) {
+        whitelistBtn.addEventListener('click', whitelistCurrentSite);
+    }
+}
+
+/**
+ * Setup IPC listeners for ad blocker events
+ */
+function setupAdBlockerListeners() {
+    // Listen for blocked ad notifications
+    ipcRenderer.on('ad-blocked', (event, data) => {
+        // Update per-tab stats
+        const tabId = data.webContentsId?.toString() || activeTabId?.toString();
+        if (tabId) {
+            // Get current count and increment
+            // const tab = tabs.find(t => t.id?.toString() === tabId);
+            // if (tab) {
+            //     let badge = tab.tabElement.querySelector('.tab-shield-badge');
+            //     const currentCount = badge ? parseInt(badge.textContent) || 0 : 0;
+            //     tabManager.updateTabShieldCount(tabId, currentCount + 1);
+            // }
+        }
+        
+        // Pulse animation on shield button
+        pulseShieldCount();
+        
+        // Refresh shields panel if open
+        const shieldsPanel = document.getElementById('shields-panel');
+        if (shieldsPanel && !shieldsPanel.classList.contains('hidden')) {
+            ipcRenderer.send('adblock-get-stats');
+        }
+    });
+    
+    // Listen for state changes
+    ipcRenderer.on('adblock-state-changed', (event, data) => {
+        updateShieldUI(data.enabled);
+        updateShieldsStats(data.stats);
+    });
+    
+    // Listen for stats updates
+    ipcRenderer.on('adblock-stats', (event, stats) => {
+        updateShieldsStats(stats);
+    });
+    
+    // Listen for whitelist data
+    ipcRenderer.on('adblock-whitelist', (event, data) => {
+        renderWhitelist(data.whitelist || []);
+    });
+    
+    // Listen for whitelist updates
+    ipcRenderer.on('adblock-whitelist-updated', (event, data) => {
+        renderWhitelist(data.whitelist || []);
+    });
+    
+    // Request initial stats
+    ipcRenderer.send('adblock-get-stats');
+    ipcRenderer.send('adblock-get-whitelist');
 }
 
 function applyTheme(theme, colorTheme = null) {
