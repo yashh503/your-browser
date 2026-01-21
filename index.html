@@ -48,6 +48,9 @@
           <i class="fas fa-shield-halved"></i>
           <span id="shield-count" class="shield-count">0</span>
         </button>
+        <button id="credentials-btn" title="Passwords">
+          <i class="fas fa-key"></i>
+        </button>
         <button id="downloads-btn" title="Downloads">
           <i class="fas fa-cloud-arrow-down"></i>
         </button>
@@ -220,6 +223,123 @@
         <button id="capture-overlay-close" title="Dismiss">
           <i class="fas fa-times"></i>
         </button>
+      </div>
+    </div>
+
+    <!-- Credential Save Prompt (non-blocking toast) -->
+    <div id="credential-prompt" class="credential-prompt hidden">
+      <div class="credential-prompt-content">
+        <div class="credential-prompt-icon">
+          <i class="fas fa-key"></i>
+        </div>
+        <div class="credential-prompt-text">
+          <p class="credential-prompt-title" id="credential-prompt-title">Save password?</p>
+          <p class="credential-prompt-subtitle" id="credential-prompt-subtitle">
+            <span id="credential-prompt-username">user@example.com</span>
+            <span class="credential-prompt-site" id="credential-prompt-site">example.com</span>
+          </p>
+        </div>
+        <div class="credential-prompt-actions">
+          <button id="credential-save-btn" class="credential-btn primary" title="Save">
+            <i class="fas fa-check"></i> Save
+          </button>
+          <button id="credential-never-btn" class="credential-btn secondary" title="Never for this site">
+            Never
+          </button>
+          <button id="credential-dismiss-btn" class="credential-btn ghost" title="Not now">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credential Update Prompt -->
+    <div id="credential-update-prompt" class="credential-prompt hidden">
+      <div class="credential-prompt-content">
+        <div class="credential-prompt-icon update">
+          <i class="fas fa-sync-alt"></i>
+        </div>
+        <div class="credential-prompt-text">
+          <p class="credential-prompt-title">Update password?</p>
+          <p class="credential-prompt-subtitle">
+            <span id="credential-update-username">user@example.com</span>
+            <span class="credential-prompt-site" id="credential-update-site">example.com</span>
+          </p>
+        </div>
+        <div class="credential-prompt-actions">
+          <button id="credential-update-btn" class="credential-btn primary" title="Update">
+            <i class="fas fa-check"></i> Update
+          </button>
+          <button id="credential-update-dismiss-btn" class="credential-btn ghost" title="Cancel">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Autofill Dropdown (appears near login forms) -->
+    <div id="autofill-dropdown" class="autofill-dropdown hidden">
+      <div class="autofill-dropdown-header">
+        <i class="fas fa-key"></i> Saved Passwords
+      </div>
+      <div id="autofill-list" class="autofill-list">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+
+    <!-- Credentials Management Panel -->
+    <div id="credentials-panel" class="panel hidden">
+      <div class="panel-header">
+        <h3><i class="fas fa-key"></i> Passwords</h3>
+        <button class="panel-close" id="close-credentials">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="credentials-content">
+        <!-- Stats Section -->
+        <div class="credentials-stats">
+          <div class="credentials-stat-item">
+            <div class="credentials-stat-icon"><i class="fas fa-lock"></i></div>
+            <div class="credentials-stat-info">
+              <span class="credentials-stat-value" id="credentials-count">0</span>
+              <span class="credentials-stat-label">Saved Passwords</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="credentials-search">
+          <i class="fas fa-search"></i>
+          <input type="text" id="credentials-search-input" placeholder="Search Site..." />
+        </div>
+
+        <!-- Credentials List -->
+        <div id="credentials-list" class="credentials-list">
+          <div class="empty-state" id="credentials-empty">
+            <i class="fas fa-key"></i>
+            <p>No saved passwords</p>
+          </div>
+        </div>
+
+        <!-- Never Save Sites Section -->
+        <div class="credentials-section">
+          <div class="credentials-section-header" id="never-save-toggle">
+            <span><i class="fas fa-ban"></i> Never Save Sites</span>
+            <span class="credentials-section-count" id="never-save-count">0</span>
+            <i class="fas fa-chevron-down credentials-section-chevron"></i>
+          </div>
+          <div id="never-save-list" class="never-save-list hidden">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="credentials-actions">
+          <button id="credentials-clear-all-btn" class="danger-btn">
+            <i class="fas fa-trash"></i> Clear All Passwords
+          </button>
+        </div>
       </div>
     </div>
 

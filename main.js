@@ -1,12 +1,20 @@
-const { app, BrowserWindow, session, ipcMain, contentTracing } = require('electron');
+const { app, BrowserWindow, session, ipcMain, contentTracing, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execSync } = require('child_process');
 const { AdBlocker, AD_DOMAINS, BLOCK_PATTERNS } = require('./adblock');
+const { CredentialManager, FORM_DETECTION_SCRIPT } = require('./credentialManager');
+
+// Track last authentication time for session-based auth (like Chrome)
+let lastAuthTime = 0;
+const AUTH_SESSION_DURATION = 60000; // 60 seconds - user won't be prompted again within this window
 
 // Initialize Ad Blocker
 const adBlocker = new AdBlocker();
+
+// Initialize Credential Manager (will be set after app is ready)
+let credentialManager = null;
 
 // Use a real Chrome User-Agent to make websites work normally
 const CHROME_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -214,6 +222,10 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Initialize Credential Manager with user data path
+  credentialManager = new CredentialManager(app.getPath('userData'));
+  console.log('[YarvixBrowser] Credential Manager initialized');
+
   // Configure the default session to behave like a normal browser
   const defaultSession = session.defaultSession;
 
@@ -497,5 +509,276 @@ ipcMain.on('clear-site-data', async () => {
   } catch (error) {
     console.error('[YarvixBrowser] Error clearing site data:', error);
     mainWindow?.webContents.send('site-data-cleared', { success: false, error: error.message });
+  }
+});
+
+// ========================================
+// CREDENTIAL MANAGER IPC HANDLERS
+// ========================================
+
+// Get form detection script for injection
+ipcMain.on('credential-get-script', () => {
+  mainWindow?.webContents.send('credential-script', {
+    script: FORM_DETECTION_SCRIPT
+  });
+});
+
+// Check if credentials exist for URL
+ipcMain.on('credential-check', (_event, { url, username, password }) => {
+  if (!credentialManager) return;
+
+  const shouldPrompt = credentialManager.shouldPromptSave(url);
+  const existingCheck = credentialManager.checkExistingCredential(url, username, password);
+
+  mainWindow?.webContents.send('credential-check-result', {
+    url,
+    username,
+    shouldPrompt,
+    ...existingCheck
+  });
+});
+
+// Save credential
+ipcMain.on('credential-save', (_event, { url, username, password }) => {
+  if (!credentialManager) return;
+
+  const success = credentialManager.saveCredential(url, username, password);
+  mainWindow?.webContents.send('credential-saved', {
+    success,
+    url,
+    username
+  });
+});
+
+// Never save for this site
+ipcMain.on('credential-never-save', (_event, { url }) => {
+  if (!credentialManager) return;
+
+  credentialManager.neverSaveForSite(url);
+  mainWindow?.webContents.send('credential-never-save-updated', {
+    url,
+    neverSaveSites: credentialManager.getNeverSaveSites()
+  });
+});
+
+// Enable save for site (remove from never-save list)
+ipcMain.on('credential-enable-save', (_event, { url }) => {
+  if (!credentialManager) return;
+
+  credentialManager.enableSaveForSite(url);
+  mainWindow?.webContents.send('credential-enable-save-updated', {
+    url,
+    neverSaveSites: credentialManager.getNeverSaveSites()
+  });
+});
+
+// Get credentials for autofill (just returns credential info without passwords for dropdown display)
+ipcMain.on('credential-get-for-autofill', (_event, { url }) => {
+  if (!credentialManager) return;
+
+  const credentials = credentialManager.getCredentials(url);
+  // Send credentials WITHOUT passwords for display in dropdown
+  const safeCredentials = credentials.map(c => ({
+    username: c.username,
+    origin: c.origin
+    // password intentionally omitted for security
+  }));
+
+  mainWindow?.webContents.send('credential-autofill-list', {
+    url,
+    credentials: safeCredentials
+  });
+});
+
+// Authenticate and get password for autofill (requires system auth)
+ipcMain.handle('credential-autofill-with-auth', async (_event, { url, username }) => {
+  if (!credentialManager) {
+    console.error('[CredentialManager] Manager not initialized');
+    return { success: false, error: 'Credential manager not initialized' };
+  }
+
+  try {
+    console.log('[CredentialManager] Auth request for:', url, username);
+
+    const now = Date.now();
+
+    // Check if user authenticated recently (session-based like Chrome)
+    const needsAuth = (now - lastAuthTime) > AUTH_SESSION_DURATION;
+
+    if (needsAuth && process.platform === 'darwin') {
+      // Check if Touch ID / system auth is available (macOS only)
+      let canPromptTouchID = false;
+      try {
+        canPromptTouchID = systemPreferences.canPromptTouchID();
+        console.log('[CredentialManager] Touch ID available:', canPromptTouchID);
+      } catch (e) {
+        console.log('[CredentialManager] Touch ID check failed:', e.message);
+      }
+
+      if (canPromptTouchID) {
+        try {
+          await systemPreferences.promptTouchID('YarvixBrowser wants to fill your password');
+          lastAuthTime = Date.now();
+          console.log('[CredentialManager] Touch ID auth successful');
+        } catch (authError) {
+          console.log('[CredentialManager] Touch ID error:', authError.message);
+          // If Touch ID fails (not cancelled), still allow access in development
+          // In production, you'd want stricter handling
+          if (authError.message?.includes('cancelled') || authError.message?.includes('cancel')) {
+            return { success: false, error: 'Authentication cancelled', cancelled: true };
+          }
+          // For other errors (like app not signed), proceed with warning
+          console.warn('[CredentialManager] Touch ID unavailable, proceeding without auth');
+          lastAuthTime = Date.now(); // Still set auth time to avoid repeated prompts
+        }
+      } else {
+        // Touch ID not available, proceed (user is already logged into macOS)
+        lastAuthTime = Date.now();
+      }
+    } else if (needsAuth) {
+      // Non-macOS: proceed without system auth for now
+      // Windows would use Windows Hello, Linux could use polkit
+      lastAuthTime = Date.now();
+    }
+
+    // Get the actual credentials with password
+    const credentials = credentialManager.getCredentials(url);
+    console.log('[CredentialManager] Found credentials:', credentials.length);
+
+    const credential = credentials.find(c => c.username === username);
+
+    if (!credential) {
+      console.error('[CredentialManager] Credential not found for username:', username);
+      return { success: false, error: 'Credential not found' };
+    }
+
+    console.log('[CredentialManager] Returning credential for:', credential.username);
+    return {
+      success: true,
+      username: credential.username,
+      password: credential.password
+    };
+  } catch (error) {
+    console.error('[CredentialManager] Auth error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Get all saved credentials (for management UI)
+ipcMain.on('credential-get-all', () => {
+  if (!credentialManager) return;
+
+  const credentials = credentialManager.getAllCredentials();
+  const neverSaveSites = credentialManager.getNeverSaveSites();
+
+  mainWindow?.webContents.send('credential-list', {
+    credentials,
+    neverSaveSites,
+    count: credentialManager.getCredentialCount()
+  });
+});
+
+// Delete credential
+ipcMain.on('credential-delete', (_event, { url, username }) => {
+  if (!credentialManager) return;
+
+  const success = credentialManager.deleteCredential(url, username);
+  mainWindow?.webContents.send('credential-deleted', {
+    success,
+    url,
+    username
+  });
+
+  // Send updated list
+  mainWindow?.webContents.send('credential-list', {
+    credentials: credentialManager.getAllCredentials(),
+    neverSaveSites: credentialManager.getNeverSaveSites(),
+    count: credentialManager.getCredentialCount()
+  });
+});
+
+// Delete all credentials for origin
+ipcMain.on('credential-delete-origin', (_event, { url }) => {
+  if (!credentialManager) return;
+
+  const success = credentialManager.deleteAllForOrigin(url);
+  mainWindow?.webContents.send('credential-origin-deleted', {
+    success,
+    url
+  });
+
+  // Send updated list
+  mainWindow?.webContents.send('credential-list', {
+    credentials: credentialManager.getAllCredentials(),
+    neverSaveSites: credentialManager.getNeverSaveSites(),
+    count: credentialManager.getCredentialCount()
+  });
+});
+
+// Update username
+ipcMain.on('credential-update-username', (_event, { url, oldUsername, newUsername }) => {
+  if (!credentialManager) return;
+
+  const success = credentialManager.updateUsername(url, oldUsername, newUsername);
+  mainWindow?.webContents.send('credential-username-updated', {
+    success,
+    url,
+    oldUsername,
+    newUsername
+  });
+
+  if (success) {
+    mainWindow?.webContents.send('credential-list', {
+      credentials: credentialManager.getAllCredentials(),
+      neverSaveSites: credentialManager.getNeverSaveSites(),
+      count: credentialManager.getCredentialCount()
+    });
+  }
+});
+
+// Clear all credentials
+ipcMain.on('credential-clear-all', () => {
+  if (!credentialManager) return;
+
+  credentialManager.clearAllCredentials();
+  mainWindow?.webContents.send('credential-all-cleared', { success: true });
+  mainWindow?.webContents.send('credential-list', {
+    credentials: [],
+    neverSaveSites: credentialManager.getNeverSaveSites(),
+    count: 0
+  });
+});
+
+// Export credentials
+ipcMain.on('credential-export', (_event, { masterPassword }) => {
+  if (!credentialManager) return;
+
+  try {
+    const exportData = credentialManager.exportCredentials(masterPassword);
+    mainWindow?.webContents.send('credential-exported', {
+      success: true,
+      data: exportData
+    });
+  } catch (error) {
+    mainWindow?.webContents.send('credential-exported', {
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Import credentials
+ipcMain.on('credential-import', (_event, { exportData, masterPassword }) => {
+  if (!credentialManager) return;
+
+  const result = credentialManager.importCredentials(exportData, masterPassword);
+  mainWindow?.webContents.send('credential-imported', result);
+
+  if (result.success) {
+    mainWindow?.webContents.send('credential-list', {
+      credentials: credentialManager.getAllCredentials(),
+      neverSaveSites: credentialManager.getNeverSaveSites(),
+      count: credentialManager.getCredentialCount()
+    });
   }
 });

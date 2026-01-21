@@ -1636,3 +1636,894 @@ function renderBookmarks() {
         });
     });
 }
+
+// ========================================
+// CREDENTIAL MANAGER
+// ========================================
+
+/**
+ * Credential Manager State
+ */
+const credentialState = {
+    pendingCredential: null,    // Credential awaiting save/update
+    credentialScript: null,     // Form detection script
+    allCredentials: [],         // All saved credentials
+    neverSaveSites: [],         // Sites marked as "never save"
+    autofillCredentials: [],    // Credentials for current page autofill
+    promptTimeout: null,        // Auto-dismiss timeout
+    promptAutoHideDelay: 15000, // 15 seconds
+    // Autofill dropdown state
+    pendingAutofillPosition: null,  // Position from webview focus event
+    pendingAutofillWebview: null,   // Webview that triggered focus
+    pendingAutofillUrl: null,       // URL for autofill
+    dropdownClicked: false          // Track if dropdown was clicked
+};
+
+/**
+ * Initialize Credential Manager
+ */
+function initCredentialManager() {
+    // Get the form detection script
+    ipcRenderer.send('credential-get-script');
+
+    // Setup panel toggle for credentials panel
+    setupCredentialsPanelToggle();
+
+    // Setup credential prompt listeners
+    setupCredentialPromptListeners();
+
+    // Setup IPC listeners
+    setupCredentialIPCListeners();
+}
+
+/**
+ * Setup Credentials Panel Toggle
+ */
+function setupCredentialsPanelToggle() {
+    const btn = document.getElementById('credentials-btn');
+    const panel = document.getElementById('credentials-panel');
+    const closeBtn = document.getElementById('close-credentials');
+
+    btn?.addEventListener('click', () => {
+        // Close other panels
+        document.querySelectorAll('.panel').forEach(p => {
+            if (p.id !== 'credentials-panel') p.classList.add('hidden');
+        });
+        panel.classList.toggle('hidden');
+
+        // Refresh credentials when opening
+        if (!panel.classList.contains('hidden')) {
+            refreshCredentialsPanel();
+        }
+    });
+
+    closeBtn?.addEventListener('click', () => {
+        panel.classList.add('hidden');
+    });
+
+    // Never save toggle
+    const neverSaveToggle = document.getElementById('never-save-toggle');
+    neverSaveToggle?.addEventListener('click', () => {
+        neverSaveToggle.classList.toggle('expanded');
+        document.getElementById('never-save-list').classList.toggle('hidden');
+    });
+
+    // Search functionality
+    const searchInput = document.getElementById('credentials-search-input');
+    searchInput?.addEventListener('input', (e) => {
+        filterCredentialsList(e.target.value);
+    });
+
+    // Clear all button
+    const clearAllBtn = document.getElementById('credentials-clear-all-btn');
+    clearAllBtn?.addEventListener('click', () => {
+        if (confirm('Are you sure you want to delete ALL saved passwords? This cannot be undone.')) {
+            ipcRenderer.send('credential-clear-all');
+        }
+    });
+}
+
+/**
+ * Refresh Credentials Panel
+ */
+function refreshCredentialsPanel() {
+    ipcRenderer.send('credential-get-all');
+}
+
+/**
+ * Render Credentials List - Grouped by Site
+ */
+function renderCredentialsList(credentials) {
+    const list = document.getElementById('credentials-list');
+    const countEl = document.getElementById('credentials-count');
+    const emptyState = document.getElementById('credentials-empty');
+
+    credentialState.allCredentials = credentials;
+
+    if (countEl) {
+        countEl.textContent = credentials.length;
+    }
+
+    if (credentials.length === 0) {
+        list.innerHTML = '';
+        if (emptyState) {
+            emptyState.style.display = 'flex';
+            list.appendChild(emptyState);
+        }
+        return;
+    }
+
+    if (emptyState) {
+        emptyState.style.display = 'none';
+    }
+
+    // Group credentials by origin/site
+    const groupedCredentials = {};
+    credentials.forEach((cred, index) => {
+        const hostname = getHostnameFromOrigin(cred.origin);
+        if (!groupedCredentials[hostname]) {
+            groupedCredentials[hostname] = {
+                origin: cred.origin,
+                hostname: hostname,
+                credentials: []
+            };
+        }
+        groupedCredentials[hostname].credentials.push({ ...cred, index });
+    });
+
+    // Sort sites alphabetically
+    const sortedSites = Object.keys(groupedCredentials).sort((a, b) =>
+        a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+
+    // Render grouped list
+    list.innerHTML = sortedSites.map(hostname => {
+        const group = groupedCredentials[hostname];
+        const credCount = group.credentials.length;
+        const isMultiple = credCount > 1;
+
+        return `
+            <div class="credential-site-group" data-hostname="${hostname}">
+                <div class="credential-site-header ${isMultiple ? 'expandable' : ''}" data-origin="${group.origin}">
+                    <div class="credential-site-icon">
+                        <img src="https://www.google.com/s2/favicons?domain=${hostname}&sz=32"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+                             alt="${hostname}">
+                        <i class="fas fa-globe fallback-icon" style="display:none;"></i>
+                    </div>
+                    <div class="credential-site-info">
+                        <div class="credential-site-name">${hostname}</div>
+                        <div class="credential-site-count">${credCount} password${credCount > 1 ? 's' : ''}</div>
+                    </div>
+                    ${isMultiple ? `
+                        <div class="credential-site-chevron">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    ` : `
+                        <div class="credential-site-actions">
+                            <button class="credential-action-btn copy-password-btn"
+                                    data-origin="${group.origin}"
+                                    data-username="${group.credentials[0].username}"
+                                    title="Copy Password">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button class="credential-action-btn danger delete-credential-btn"
+                                    data-origin="${group.origin}"
+                                    data-username="${group.credentials[0].username}"
+                                    title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `}
+                </div>
+                ${isMultiple ? `
+                    <div class="credential-site-credentials hidden">
+                        ${group.credentials.map(cred => `
+                            <div class="credential-sub-item" data-origin="${cred.origin}" data-username="${cred.username}">
+                                <div class="credential-sub-icon">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="credential-sub-info">
+                                    <div class="credential-sub-username">${cred.username}</div>
+                                </div>
+                                <div class="credential-sub-actions">
+                                    <button class="credential-action-btn copy-password-btn" title="Copy Password">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="credential-action-btn danger delete-credential-btn" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+
+    // Add event listeners for expandable headers
+    list.querySelectorAll('.credential-site-header.expandable').forEach(header => {
+        header.addEventListener('click', (e) => {
+            if (e.target.closest('.credential-action-btn')) return;
+
+            const group = header.closest('.credential-site-group');
+            const credList = group.querySelector('.credential-site-credentials');
+            const chevron = header.querySelector('.credential-site-chevron');
+
+            header.classList.toggle('expanded');
+            credList.classList.toggle('hidden');
+            chevron?.classList.toggle('rotated');
+        });
+    });
+
+    // Add event listeners for single-credential sites
+    list.querySelectorAll('.credential-site-header:not(.expandable)').forEach(header => {
+        const copyBtn = header.querySelector('.copy-password-btn');
+        const deleteBtn = header.querySelector('.delete-credential-btn');
+
+        copyBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            copyCredentialPassword(copyBtn.dataset.origin, copyBtn.dataset.username);
+        });
+
+        deleteBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const hostname = header.closest('.credential-site-group').dataset.hostname;
+            if (confirm(`Delete password for ${deleteBtn.dataset.username} at ${hostname}?`)) {
+                ipcRenderer.send('credential-delete', { url: deleteBtn.dataset.origin, username: deleteBtn.dataset.username });
+            }
+        });
+    });
+
+    // Add event listeners for sub-items (multiple credentials per site)
+    list.querySelectorAll('.credential-sub-item').forEach(item => {
+        const origin = item.dataset.origin;
+        const username = item.dataset.username;
+        const hostname = item.closest('.credential-site-group').dataset.hostname;
+
+        item.querySelector('.copy-password-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            copyCredentialPassword(origin, username);
+        });
+
+        item.querySelector('.delete-credential-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete password for ${username} at ${hostname}?`)) {
+                ipcRenderer.send('credential-delete', { url: origin, username });
+            }
+        });
+    });
+}
+
+/**
+ * Copy credential password to clipboard (requires system auth)
+ */
+async function copyCredentialPassword(origin, username) {
+    try {
+        // Use system auth to get password securely
+        const result = await ipcRenderer.invoke('credential-autofill-with-auth', {
+            url: origin,
+            username
+        });
+
+        if (!result.success) {
+            if (result.cancelled) {
+                console.log('[CredentialManager] Auth cancelled by user');
+            } else {
+                showToast('Authentication failed');
+            }
+            return;
+        }
+
+        // Copy password to clipboard
+        await navigator.clipboard.writeText(result.password);
+        showToast('Password copied to clipboard');
+    } catch (err) {
+        console.error('Failed to copy password:', err);
+        showToast('Failed to copy password');
+    }
+}
+
+/**
+ * Show a brief toast notification
+ */
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'credential-toast';
+    toast.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        background: var(--success-color);
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: toastIn 0.3s ease;
+    `;
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'toastOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
+
+/**
+ * Filter credentials list by search query (works with grouped structure)
+ */
+function filterCredentialsList(query) {
+    const groups = document.querySelectorAll('.credential-site-group');
+    const lowerQuery = query.toLowerCase();
+
+    groups.forEach(group => {
+        const hostname = group.dataset.hostname?.toLowerCase() || '';
+        const subItems = group.querySelectorAll('.credential-sub-item');
+        const header = group.querySelector('.credential-site-header');
+
+        // Check if hostname matches
+        if (hostname.includes(lowerQuery)) {
+            group.style.display = 'block';
+            subItems.forEach(item => item.style.display = 'flex');
+            return;
+        }
+
+        // Check sub-items for username matches
+        let hasMatch = false;
+        subItems.forEach(item => {
+            const username = item.dataset.username?.toLowerCase() || '';
+            if (username.includes(lowerQuery)) {
+                item.style.display = 'flex';
+                hasMatch = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // For single-credential sites, check username in header
+        if (subItems.length === 0) {
+            const username = header?.querySelector('.copy-password-btn')?.dataset.username?.toLowerCase() || '';
+            hasMatch = username.includes(lowerQuery);
+        }
+
+        group.style.display = hasMatch ? 'block' : 'none';
+
+        // If searching and has matches, expand the group
+        if (hasMatch && query && subItems.length > 0) {
+            header?.classList.add('expanded');
+            group.querySelector('.credential-site-credentials')?.classList.remove('hidden');
+            group.querySelector('.credential-site-chevron')?.classList.add('rotated');
+        }
+    });
+}
+
+/**
+ * Render Never Save Sites
+ */
+function renderNeverSaveSites(sites) {
+    const list = document.getElementById('never-save-list');
+    const countEl = document.getElementById('never-save-count');
+
+    credentialState.neverSaveSites = sites;
+
+    if (countEl) {
+        countEl.textContent = sites.length;
+    }
+
+    if (sites.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="padding: 16px;"><p style="font-size: 13px; color: var(--text-secondary);">No sites blocked</p></div>';
+        return;
+    }
+
+    list.innerHTML = sites.map(site => `
+        <div class="never-save-item" data-site="${site}">
+            <span class="never-save-domain">
+                <i class="fas fa-globe"></i>
+                ${getHostnameFromOrigin(site)}
+            </span>
+            <button class="never-save-remove" title="Allow saving for this site">
+                <i class="fas fa-check"></i>
+            </button>
+        </div>
+    `).join('');
+
+    // Add event listeners
+    list.querySelectorAll('.never-save-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const site = btn.closest('.never-save-item').dataset.site;
+            ipcRenderer.send('credential-enable-save', { url: site });
+        });
+    });
+}
+
+/**
+ * Get hostname from origin URL
+ */
+function getHostnameFromOrigin(origin) {
+    try {
+        return new URL(origin).hostname;
+    } catch {
+        return origin;
+    }
+}
+
+/**
+ * Setup Credential Prompt Listeners
+ */
+function setupCredentialPromptListeners() {
+    // Save button
+    document.getElementById('credential-save-btn')?.addEventListener('click', () => {
+        if (credentialState.pendingCredential) {
+            const { url, username, password } = credentialState.pendingCredential;
+            ipcRenderer.send('credential-save', { url, username, password });
+            hideCredentialPrompt();
+        }
+    });
+
+    // Never button
+    document.getElementById('credential-never-btn')?.addEventListener('click', () => {
+        if (credentialState.pendingCredential) {
+            ipcRenderer.send('credential-never-save', { url: credentialState.pendingCredential.url });
+            hideCredentialPrompt();
+        }
+    });
+
+    // Dismiss button
+    document.getElementById('credential-dismiss-btn')?.addEventListener('click', () => {
+        hideCredentialPrompt();
+    });
+
+    // Update button
+    document.getElementById('credential-update-btn')?.addEventListener('click', () => {
+        if (credentialState.pendingCredential) {
+            const { url, username, password } = credentialState.pendingCredential;
+            ipcRenderer.send('credential-save', { url, username, password });
+            hideCredentialUpdatePrompt();
+        }
+    });
+
+    // Update dismiss button
+    document.getElementById('credential-update-dismiss-btn')?.addEventListener('click', () => {
+        hideCredentialUpdatePrompt();
+    });
+}
+
+/**
+ * Show Credential Save Prompt
+ */
+function showCredentialSavePrompt(url, username) {
+    const prompt = document.getElementById('credential-prompt');
+    const usernameEl = document.getElementById('credential-prompt-username');
+    const siteEl = document.getElementById('credential-prompt-site');
+
+    if (!prompt) return;
+
+    usernameEl.textContent = username;
+    siteEl.textContent = getHostnameFromOrigin(url);
+
+    prompt.classList.remove('hidden');
+
+    // Auto-hide after delay
+    clearTimeout(credentialState.promptTimeout);
+    credentialState.promptTimeout = setTimeout(() => {
+        hideCredentialPrompt();
+    }, credentialState.promptAutoHideDelay);
+}
+
+/**
+ * Hide Credential Save Prompt
+ */
+function hideCredentialPrompt() {
+    const prompt = document.getElementById('credential-prompt');
+    if (prompt) {
+        prompt.classList.add('hidden');
+    }
+    clearTimeout(credentialState.promptTimeout);
+    credentialState.pendingCredential = null;
+}
+
+/**
+ * Show Credential Update Prompt
+ */
+function showCredentialUpdatePrompt(url, username) {
+    const prompt = document.getElementById('credential-update-prompt');
+    const usernameEl = document.getElementById('credential-update-username');
+    const siteEl = document.getElementById('credential-update-site');
+
+    if (!prompt) return;
+
+    usernameEl.textContent = username;
+    siteEl.textContent = getHostnameFromOrigin(url);
+
+    prompt.classList.remove('hidden');
+
+    // Auto-hide after delay
+    clearTimeout(credentialState.promptTimeout);
+    credentialState.promptTimeout = setTimeout(() => {
+        hideCredentialUpdatePrompt();
+    }, credentialState.promptAutoHideDelay);
+}
+
+/**
+ * Hide Credential Update Prompt
+ */
+function hideCredentialUpdatePrompt() {
+    const prompt = document.getElementById('credential-update-prompt');
+    if (prompt) {
+        prompt.classList.add('hidden');
+    }
+    clearTimeout(credentialState.promptTimeout);
+    credentialState.pendingCredential = null;
+}
+
+/**
+ * Show Autofill Dropdown at specific position
+ */
+function showAutofillDropdownAt(credentials, x, y, minWidth) {
+    const dropdown = document.getElementById('autofill-dropdown');
+    const list = document.getElementById('autofill-list');
+
+    if (!dropdown || credentials.length === 0) {
+        hideAutofillDropdown();
+        return;
+    }
+
+    credentialState.autofillCredentials = credentials;
+
+    list.innerHTML = credentials.map((cred, index) => `
+        <div class="autofill-item" data-index="${index}">
+            <div class="autofill-item-icon">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="autofill-item-info">
+                <div class="autofill-item-username">${cred.username}</div>
+                <div class="autofill-item-password">********</div>
+            </div>
+        </div>
+    `).join('');
+
+    // Position dropdown
+    dropdown.style.left = `${x}px`;
+    dropdown.style.top = `${y}px`;
+    if (minWidth) {
+        dropdown.style.minWidth = `${Math.max(minWidth, 250)}px`;
+    }
+    dropdown.classList.remove('hidden');
+
+    // Add click handlers
+    list.querySelectorAll('.autofill-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            credentialState.dropdownClicked = true;
+
+            const index = parseInt(item.dataset.index);
+            const cred = credentialState.autofillCredentials[index];
+            if (cred) {
+                // Hide dropdown FIRST for immediate visual feedback
+                hideAutofillDropdown();
+                // Then perform autofill with system auth (username + origin URL, password fetched after auth)
+                performAutofill(cred.username, cred.origin);
+            }
+        });
+    });
+
+    // Prevent dropdown clicks from triggering blur
+    dropdown.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        credentialState.dropdownClicked = true;
+    });
+}
+
+/**
+ * Show Autofill Dropdown (legacy, used for manual positioning)
+ */
+function showAutofillDropdown(credentials, x, y) {
+    showAutofillDropdownAt(credentials, x, y, null);
+}
+
+/**
+ * Hide Autofill Dropdown
+ */
+function hideAutofillDropdown() {
+    const dropdown = document.getElementById('autofill-dropdown');
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+    }
+    // Clear pending state
+    credentialState.pendingAutofillPosition = null;
+    credentialState.pendingAutofillWebview = null;
+    credentialState.pendingAutofillUrl = null;
+}
+
+/**
+ * Perform autofill in active webview with system authentication
+ * This mimics Chrome/Brave behavior - requires Touch ID/Password before filling
+ */
+async function performAutofill(username, url) {
+    const webview = tabManager.getActiveWebview();
+    if (!webview) return;
+
+    try {
+        // Request password with system authentication (Touch ID/Password)
+        const result = await ipcRenderer.invoke('credential-autofill-with-auth', {
+            url: url || credentialState.pendingAutofillUrl,
+            username
+        });
+
+        if (!result.success) {
+            if (result.cancelled) {
+                // User cancelled auth - just close dropdown silently
+                console.log('[CredentialManager] Auth cancelled by user');
+            } else {
+                console.error('[CredentialManager] Auth failed:', result.error);
+                // Show specific error message
+                if (result.error === 'Credential not found') {
+                    showToast('Password not found for this site');
+                } else {
+                    showToast('Could not fill password: ' + result.error);
+                }
+            }
+            return;
+        }
+
+        // Now fill the form with the authenticated credentials
+        const script = `
+            (function() {
+                if (window.__yarvixAutofill) {
+                    window.__yarvixAutofill(${JSON.stringify(result.username)}, ${JSON.stringify(result.password)});
+                }
+            })();
+        `;
+
+        await webview.executeJavaScript(script);
+    } catch (err) {
+        console.error('[CredentialManager] Autofill failed:', err);
+    }
+}
+
+/**
+ * Inject credential detection script into webview
+ */
+function injectCredentialScript(webview, tabId) {
+    if (!credentialState.credentialScript) return;
+
+    try {
+        const currentUrl = webview.getURL();
+
+        // Skip injection for local files and homepage
+        if (!currentUrl || currentUrl.startsWith('file://') || currentUrl === 'about:blank') {
+            return;
+        }
+
+        webview.executeJavaScript(credentialState.credentialScript).catch(err => {
+            // Silently fail - some pages may block script execution
+        });
+    } catch (err) {
+        console.error('[CredentialManager] Failed to inject credential script:', err);
+    }
+}
+
+/**
+ * Handle credential form submission from webview
+ */
+function handleCredentialSubmit(data) {
+    const { url, username, password } = data;
+
+    if (!url || !username || !password) return;
+
+    // Check if we should prompt
+    ipcRenderer.send('credential-check', { url, username, password });
+
+    // Store pending credential
+    credentialState.pendingCredential = { url, username, password };
+}
+
+/**
+ * Handle login form detected on page
+ */
+function handleLoginFormDetected(data) {
+    const { url } = data;
+
+    // Request credentials for autofill
+    ipcRenderer.send('credential-get-for-autofill', { url });
+}
+
+/**
+ * Setup IPC Listeners for Credential Manager
+ */
+function setupCredentialIPCListeners() {
+    // Receive form detection script
+    ipcRenderer.on('credential-script', (_event, data) => {
+        credentialState.credentialScript = data.script;
+    });
+
+    // Receive credential check result
+    ipcRenderer.on('credential-check-result', (_event, data) => {
+        if (!credentialState.pendingCredential) return;
+
+        const { shouldPrompt, status } = data;
+
+        if (!shouldPrompt) {
+            // Site is in "never save" list
+            credentialState.pendingCredential = null;
+            return;
+        }
+
+        if (status === 'same') {
+            // Credentials already saved with same password - don't prompt
+            credentialState.pendingCredential = null;
+            return;
+        }
+
+        if (status === 'different') {
+            // Password changed - show update prompt
+            showCredentialUpdatePrompt(
+                credentialState.pendingCredential.url,
+                credentialState.pendingCredential.username
+            );
+        } else {
+            // New credential - show save prompt
+            showCredentialSavePrompt(
+                credentialState.pendingCredential.url,
+                credentialState.pendingCredential.username
+            );
+        }
+    });
+
+    // Receive credential saved confirmation
+    ipcRenderer.on('credential-saved', (_event, data) => {
+        if (data.success) {
+            showToast('Password saved');
+        }
+    });
+
+    // Receive all credentials list
+    ipcRenderer.on('credential-list', (_event, data) => {
+        renderCredentialsList(data.credentials || []);
+        renderNeverSaveSites(data.neverSaveSites || []);
+    });
+
+    // Receive autofill credentials
+    ipcRenderer.on('credential-autofill-list', (_event, data) => {
+        if (data.credentials && data.credentials.length > 0) {
+            credentialState.autofillCredentials = data.credentials;
+
+            // If we have a pending position from focus event, show dropdown
+            if (credentialState.pendingAutofillPosition && credentialState.pendingAutofillWebview) {
+                const webview = credentialState.pendingAutofillWebview;
+                const pos = credentialState.pendingAutofillPosition;
+
+                // Get webview's position relative to window
+                const webviewRect = webview.getBoundingClientRect();
+
+                // Calculate absolute position for dropdown
+                const dropdownX = webviewRect.left + pos.x;
+                const dropdownY = webviewRect.top + pos.y + 4; // Small offset below field
+
+                showAutofillDropdownAt(data.credentials, dropdownX, dropdownY, pos.width);
+            }
+        } else {
+            // No credentials for this site, hide dropdown
+            hideAutofillDropdown();
+        }
+    });
+
+    // Receive never-save update
+    ipcRenderer.on('credential-never-save-updated', (_event, data) => {
+        showToast('Saving disabled for this site');
+        renderNeverSaveSites(data.neverSaveSites || []);
+    });
+
+    // Receive enable-save update
+    ipcRenderer.on('credential-enable-save-updated', (_event, data) => {
+        showToast('Saving enabled for this site');
+        renderNeverSaveSites(data.neverSaveSites || []);
+    });
+
+    // Receive all cleared
+    ipcRenderer.on('credential-all-cleared', (_event, data) => {
+        if (data.success) {
+            showToast('All passwords deleted');
+        }
+    });
+}
+
+/**
+ * Extend TabManager to include credential injection
+ */
+const originalInjectAdBlocker = TabManager.prototype.injectAdBlocker;
+TabManager.prototype.injectAdBlocker = function(webview, tabId) {
+    // Call original ad blocker injection
+    originalInjectAdBlocker.call(this, webview, tabId);
+
+    // Also inject credential detection script
+    injectCredentialScript(webview, tabId);
+};
+
+/**
+ * Setup console message listener for credential events from webviews
+ */
+function setupWebviewCredentialListeners(webview) {
+    webview.addEventListener('console-message', (event) => {
+        try {
+            if (event.message.includes('yarvix-credential-submit') ||
+                event.message.includes('yarvix-login-form-detected') ||
+                event.message.includes('yarvix-autofill-focus') ||
+                event.message.includes('yarvix-autofill-blur')) {
+                const data = JSON.parse(event.message);
+
+                if (data.type === 'yarvix-credential-submit') {
+                    handleCredentialSubmit(data.data);
+                } else if (data.type === 'yarvix-login-form-detected') {
+                    handleLoginFormDetected(data.data);
+                } else if (data.type === 'yarvix-autofill-focus') {
+                    handleAutofillFocus(data.data, webview);
+                } else if (data.type === 'yarvix-autofill-blur') {
+                    handleAutofillBlur();
+                }
+            }
+        } catch (e) {
+            // Ignore non-JSON messages
+        }
+    });
+}
+
+/**
+ * Handle autofill focus event - show dropdown near the focused field
+ */
+function handleAutofillFocus(data, webview) {
+    const { url, position } = data;
+
+    // Store position and webview for when credentials arrive
+    credentialState.pendingAutofillPosition = position;
+    credentialState.pendingAutofillWebview = webview;
+    credentialState.pendingAutofillUrl = url;
+
+    // Request credentials for this URL
+    ipcRenderer.send('credential-get-for-autofill', { url });
+}
+
+/**
+ * Handle autofill blur event - hide dropdown
+ */
+function handleAutofillBlur() {
+    // Delay hide to allow clicking on dropdown items
+    setTimeout(() => {
+        if (!credentialState.dropdownClicked) {
+            hideAutofillDropdown();
+        }
+        credentialState.dropdownClicked = false;
+    }, 200);
+}
+
+// Extend setupWebviewListeners to include credential listeners
+const originalSetupWebviewListeners = window.setupWebviewListeners;
+window.setupWebviewListeners = function(webview) {
+    if (originalSetupWebviewListeners) {
+        originalSetupWebviewListeners(webview);
+    }
+    setupWebviewCredentialListeners(webview);
+};
+
+// Initialize credential manager when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize after a small delay to ensure TabManager is ready
+    setTimeout(initCredentialManager, 100);
+});
+
+// Close autofill dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('autofill-dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+        hideAutofillDropdown();
+    }
+});
