@@ -1680,6 +1680,11 @@ const suggestionState = {
 };
 
 /**
+ * Saved Credentials for suggestions
+ */
+let savedCredentials = [];
+
+/**
  * Setup URL suggestions functionality
  */
 function setupUrlSuggestions() {
@@ -1756,7 +1761,7 @@ function showUrlSuggestions(query) {
 
     const lowerQuery = query.toLowerCase();
 
-    // Get suggestions from history and bookmarks
+    // Get suggestions from history, bookmarks, and credentials
     const suggestions = [];
 
     // Add matching history items
@@ -1794,6 +1799,39 @@ function showUrlSuggestions(query) {
                     title: item.title || item.url,
                     timestamp: item.timestamp,
                     matchScore: (urlMatch && titleMatch ? 3 : (urlMatch ? 2 : 1)) + 2
+                });
+            }
+        }
+    });
+
+    // Add matching credential sites (from Password Manager)
+    savedCredentials.forEach(cred => {
+        const hostname = (cred.hostname || '').toLowerCase();
+        const origin = (cred.origin || '').toLowerCase();
+        const username = (cred.username || '').toLowerCase();
+
+        const hostnameMatch = hostname.includes(lowerQuery);
+        const originMatch = origin.includes(lowerQuery);
+        const usernameMatch = username.includes(lowerQuery);
+
+        if (hostnameMatch || originMatch || usernameMatch) {
+            // Use the origin URL for navigation
+            const navUrl = cred.origin;
+
+            // Check if already in suggestions (from history/bookmarks)
+            const existingIndex = suggestions.findIndex(s => s.url === navUrl);
+            if (existingIndex >= 0) {
+                // Upgrade to credential type (highest priority)
+                suggestions[existingIndex].type = 'credential';
+                suggestions[existingIndex].matchScore += 3;
+            } else {
+                suggestions.push({
+                    type: 'credential',
+                    url: navUrl,
+                    title: cred.hostname || cred.origin,
+                    subtitle: cred.username ? `Saved for ${cred.username}` : 'Saved password',
+                    timestamp: cred.timestamp || Date.now(),
+                    matchScore: (hostnameMatch ? 3 : (originMatch ? 2 : 1)) + 3
                 });
             }
         }
@@ -1954,6 +1992,8 @@ function getSuggestionIcon(suggestion) {
             return '<i class="fas fa-star" style="color: var(--accent-color);"></i>';
         case 'history':
             return '<i class="fas fa-clock-rotate-left"></i>';
+        case 'credential':
+            return '<i class="fas fa-key" style="color: var(--warning-color);"></i>';
         case 'search':
             return '<i class="fas fa-magnifying-glass"></i>';
         default:
@@ -1970,6 +2010,8 @@ function getSuggestionTypeLabel(type) {
             return 'Bookmark';
         case 'history':
             return 'History';
+        case 'credential':
+            return 'Password';
         case 'search':
             return 'Search';
         default:
@@ -2035,6 +2077,9 @@ const credentialState = {
 function initCredentialManager() {
     // Get the form detection script
     ipcRenderer.send('credential-get-script');
+
+    // Request credentials for URL suggestions
+    ipcRenderer.send('credential-get-for-suggestions');
 
     // Setup panel toggle for credentials panel
     setupCredentialsPanelToggle();
@@ -2753,6 +2798,8 @@ function setupCredentialIPCListeners() {
     ipcRenderer.on('credential-saved', (_event, data) => {
         if (data.success) {
             showToast('Password saved');
+            // Refresh credential suggestions for URL bar
+            ipcRenderer.send('credential-get-for-suggestions');
         }
     });
 
@@ -2760,6 +2807,12 @@ function setupCredentialIPCListeners() {
     ipcRenderer.on('credential-list', (_event, data) => {
         renderCredentialsList(data.credentials || []);
         renderNeverSaveSites(data.neverSaveSites || []);
+    });
+
+    // Receive credential suggestions (for URL bar)
+    ipcRenderer.on('credential-suggestions', (_event, data) => {
+        savedCredentials = data.credentials || [];
+        console.log(`[URLSuggestions] Loaded ${savedCredentials.length} credential sites`);
     });
 
     // Receive autofill credentials

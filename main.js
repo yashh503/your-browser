@@ -678,6 +678,35 @@ ipcMain.on('credential-get-all', () => {
   });
 });
 
+// Get credentials for URL suggestions (lightweight, no passwords)
+ipcMain.on('credential-get-for-suggestions', () => {
+  if (!credentialManager) return;
+
+  const credentials = credentialManager.getAllCredentials();
+  // Return just the data needed for suggestions - origin/hostname and masked username
+  const suggestionCredentials = credentials.map(c => ({
+    origin: c.origin,
+    hostname: extractHostname(c.origin),
+    username: c.displayName || c.username,
+    timestamp: c.updatedAt || c.createdAt
+  }));
+
+  mainWindow?.webContents.send('credential-suggestions', {
+    credentials: suggestionCredentials
+  });
+});
+
+/**
+ * Extract hostname from origin URL
+ */
+function extractHostname(origin) {
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return origin;
+  }
+}
+
 // Delete credential
 ipcMain.on('credential-delete', (_event, { url, username }) => {
   if (!credentialManager) return;
