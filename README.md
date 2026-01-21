@@ -1,247 +1,280 @@
-# YarvixBrowser Browser
+# 🦊 YarvixBrowser
 
-A private, fast, and customizable web browser built with Electron.
+<div align="center">
 
-## Features
+![YarvixBrowser Logo](icon.svg)
 
-- Tabbed Browsing - Multiple tabs with fast switching
-- Theme System - Dark/Light modes with 6 accent color options (Purple, Blue, Cyan, Emerald, Rose, Orange)
-- Privacy Focused - Screen capture detection, content protection
-- Customizable Homepage - Quick links, search engine selection, clock display
-- Bookmarks & History - Save and manage your favorite pages
-- Keyboard Shortcuts - Full keyboard navigation support
-- Download Manager - Built-in download tracking
+**The Ultimate Stealth Browser** - A private, fast, and customizable web browser built with Electron.
+
+[![macOS](https://img.shields.io/badge/platform-macOS-blue?style=for-the-badge&logo=apple)](https://github.com/your-username/your-browser)
+[![Electron](https://img.shields.io/badge/Electron-28-black?style=for-the-badge&logo=electron)](https://www.electronjs.org/)
+[![License](https://img.shields.io/badge/license-Private-red?style=for-the-badge)](README.md)
+
+</div>
 
 ---
 
-## Building for macOS (Personal Use - No Code Signing)
+## ✨ Features
 
-This guide explains how to build YarvixBrowser for your personal Mac without any certificates, signing, or notarization.
+### 🔒 Privacy & Security
+
+| Feature | Description |
+|---------|-------------|
+| **Screen Capture Detection** | Automatically detects when screen is being recorded or screenshots are taken |
+| **Content Protection** | Prevents your browser window from appearing in screenshots/screen recordings |
+| **Ad Blocker** | Built-in YouTube ad blocker that removes video ads, overlay ads, and display ads |
+| **Whitelist Management** | Whitelist specific sites to disable ad blocking when needed |
+| **Service Worker Management** | Clear corrupted service worker data to fix website issues |
+
+### 🔑 Password Manager
+
+| Feature | Description |
+|---------|------------- |
+| **Secure Credential Storage** | Save and manage passwords with AES-256-GCM encryption |
+| **Touch ID Authentication** | Authenticate with Touch ID before autofilling passwords (macOS) |
+| **Autofill Support** | Auto-fill login forms on supported websites |
+| **URL Suggestions** | Sites with saved passwords appear at the top of URL bar suggestions |
+| **Credential Dashboard** | View, search, and manage all saved credentials |
+| **Never Save Sites** | Mark specific sites to never save passwords |
+
+### 🎨 Customization
+
+| Feature | Description |
+|---------|-------------|
+| **Theme System** | Choose between Dark and Light modes |
+| **6 Color Accents** | Purple (default), Blue, Cyan, Emerald, Rose, Orange |
+| **Customizable Homepage** | Set your own homepage with quick links |
+| **Search Engine Selection** | Choose your preferred search engine (Google, Bing, DuckDuckGo, etc.) |
+
+### 🗂️ Browsing Features
+
+| Feature | Description |
+|---------|-------------|
+| **Tabbed Browsing** | Multiple tabs with fast switching |
+| **Bookmarks Bar** | Quick access to favorite sites |
+| **History Management** | View and clear browsing history |
+| **Download Manager** | Built-in download tracking with progress |
+| **Find in Page** | Search within the current page |
+| **Keyboard Shortcuts** | Full keyboard navigation support |
+
+---
+
+## 📸 Screenshots
+
+> *Add your screenshots here by placing images in the `docs/` folder*
+
+### Browser Interface
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  🦊 YarvixBrowser                                              ─ □ × │
+├────────┬────────┬────────┬────────┬────────┬─────────────────────────────┤
+│ +  Tab │  Tab   │  Tab   │  Tab   │        │ 🔍 Google ▼                │
+│        │        │        │        │        │                             │
+├────────┴────────┴────────┴────────┴────────┴─────────────────────────┤
+│  ←  →  ↻  ☆   🔒  [_____________________________________]   ⛡ 📥 🛡 │
+├─────────────────────────────────────────────────────────────────────┤
+│  ★ Favorites                                                    ─ │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│                                                                     │
+│                    🦊 Welcome to YarvixBrowser                       │
+│                                                                     │
+│          [New Tab]                                                  │
+│                                                                     │
+│                                                                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### URL Bar with Suggestions
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ←  →  ↻  ☆   🔒  https://www.youtube.com    [________]   ⛡ 📥 🛡 │
+├─────────────────────────────────────────────────────────────────────┤
+│  📌 Password Manager Suggestions (Top Priority)                     │
+│  ├── 🔑 google.com    "Saved for myemail@gmail.com"    [Password]  │
+│  ├── 🔑 github.com    "Saved for myuser"                [Password] │
+│  ├── 🔑 amazon.com    "Saved for myuser"                [Password] │
+│  ├── ⭐ youtube.com   youtube.com                        [Bookmark] │
+│  ├── 📜 github.com    github.com/user/repo              [History]  │
+│  └── 🔍 Search for "tutorial"                           [Search]   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Shields Panel (Ad Blocker)
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        🛡 Shields                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  Protection is ON                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  ●────────────────────────────────────────────────────── ●  │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  This Page     │  Total Blocked                                    │
+│  12 ads        │  1,247 ads                                        │
+│                                                                     │
+│  [Whitelist This Site]                                             │
+│                                                                     │
+│  Whitelisted Sites (2)                                             │
+│  ├── wikipedia.org          [×]                                   │
+│  └── wikiwand.com           [×]                                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Credential Manager
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        🔑 Credentials                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  Saved Passwords: 12                                                │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │ 🔐  12 passwords saved                                       │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  [🔍 Search passwords...]                                          │
+│                                                                     │
+│  ▼ google.com (3 passwords)                                        │
+│  ├── myemail@gmail.com    [📋] [🗑]                                │
+│  ├── work@gmail.com       [📋] [🗑]                                │
+│  └── oldaccount@gmail.com [📋] [🗑]                                │
+│                                                                     │
+│  ▼ github.com (1 password)                                         │
+│  └── myusername            [📋] [🗑]                                │
+│                                                                     │
+│  [Never Save Sites]  [Clear All Passwords]                         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-1. **Node.js** (v18 or later)
-   ```bash
-   # Check if installed
-   node --version
+- **macOS** 10.15 or later
+- **Node.js** v18 or later
+- **npm** (comes with Node.js)
 
-   # Install via Homebrew if needed
-   brew install node
-   ```
-
-2. **npm** (comes with Node.js)
-   ```bash
-   npm --version
-   ```
-
-### Step 1: Install Dependencies
+### Installation
 
 ```bash
-# Navigate to project directory
-cd /path/to/your-browser
+# Clone the repository
+git clone https://github.com/your-username/your-browser.git
+cd your-browser
 
-# Install all dependencies
+# Install dependencies
 npm install
-```
 
-### Step 2: Build the App
-
-```bash
-# Build for macOS (unsigned) - RECOMMENDED
-CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac
-```
-
-This command:
-- Sets `CSC_IDENTITY_AUTO_DISCOVERY=false` to prevent automatic certificate lookup
-- Builds unsigned DMG and ZIP files for both Intel and Apple Silicon
-
-**Alternative: Build only for your Mac's architecture**
-
-```bash
-# Apple Silicon (M1/M2/M3) only
-CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --arm64
-
-# Intel Mac only
-CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --x64
-```
-
-### Step 3: Find Your Built App
-
-After building, your app will be in the `dist` folder:
-
-```
-dist/
-├── YarvixBrowser-1.0.0-arm64.dmg      # DMG installer (Apple Silicon)
-├── YarvixBrowser-1.0.0-x64.dmg        # DMG installer (Intel)
-├── YarvixBrowser-1.0.0-arm64-mac.zip  # ZIP archive (Apple Silicon)
-├── YarvixBrowser-1.0.0-x64-mac.zip    # ZIP archive (Intel)
-└── mac-arm64/                      # Unpacked app folder
-    └── YarvixBrowser.app
-```
-
-### Step 4: Install & Run the App
-
-**Option A: Using the DMG**
-1. Open `dist/YarvixBrowser-1.0.0-arm64.dmg` (or x64 for Intel Mac)
-2. Drag YarvixBrowser to Applications
-3. First time opening: Right-click the app > "Open" > Click "Open" in the dialog
-
-**Option B: Direct from build folder**
-1. Navigate to `dist/mac-arm64/` (or `mac-x64/` for Intel)
-2. Double-click `YarvixBrowser.app`
-3. If blocked: Right-click > "Open" > "Open"
-
-**Option C: Using Terminal**
-```bash
-# Open directly from dist folder
-open dist/mac-arm64/YarvixBrowser.app
-
-# Or if moved to Applications
-open /Applications/YarvixBrowser.app
-```
-
----
-
-## Handling "App is damaged" or Gatekeeper Warnings
-
-Since the app is unsigned, macOS may show security warnings. Here's how to handle them:
-
-### Method 1: Right-Click Open (Recommended)
-1. Right-click (or Control+click) on `YarvixBrowser.app`
-2. Select "Open" from the context menu
-3. Click "Open" in the dialog that appears
-
-### Method 2: System Settings
-1. Go to **System Settings** > **Privacy & Security**
-2. Scroll down to find the blocked app message
-3. Click "Open Anyway"
-
-### Method 3: Remove Quarantine Flag (Terminal)
-```bash
-# Remove quarantine attribute from the app
-xattr -cr /Applications/YarvixBrowser.app
-
-# Or if running from dist folder
-xattr -cr dist/mac-arm64/YarvixBrowser.app
-```
-
-### Method 4: Disable Gatekeeper Temporarily (Not Recommended)
-```bash
-# Disable Gatekeeper (requires admin password)
-sudo spctl --master-disable
-
-# After installing, re-enable it
-sudo spctl --master-enable
-```
-
----
-
-## Quick Build Commands Reference
-
-| Command | Description |
-|---------|-------------|
-| `npm start` | Run in development mode |
-| `npm run build:mac` | Build for macOS (all architectures) |
-| `npm run pack` | Build unpacked directory (fastest, for testing) |
-| `CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac` | Build without certificate lookup |
-
-**Single architecture builds:**
-```bash
-# Apple Silicon only
-CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --arm64
-
-# Intel only
-CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac dmg --x64
-
-# Unpacked app only (fastest for testing)
-CSC_IDENTITY_AUTO_DISCOVERY=false npm run pack
-```
-
----
-
-## Development
-
-### Run in Development Mode
-```bash
+# Run in development mode
 npm start
 ```
 
-### Project Structure
-```
-your-browser/
-├── main.js           # Electron main process
-├── renderer.js       # Browser UI logic
-├── index.html        # Main browser window
-├── homepage.html     # New tab page
-├── style.css         # Browser styles
-├── package.json      # Project config
-├── build/            # Build resources (icons)
-└── dist/             # Built applications
+### Building for macOS
+
+```bash
+# Build unsigned DMG for personal use
+CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac
+
+# Built files will be in dist/ folder
 ```
 
 ---
 
-## Keyboard Shortcuts
+## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+T` | New Tab |
-| `Cmd+W` | Close Tab |
-| `Cmd+Shift+T` | Reopen Closed Tab |
-| `Cmd+L` | Focus URL Bar |
-| `Cmd+R` | Refresh Page |
-| `Cmd+D` | Bookmark Page |
-| `Cmd+F` | Find in Page |
-| `Cmd+Tab` | Next Tab |
-| `Cmd+Shift+Tab` | Previous Tab |
-| `Cmd+1-9` | Switch to Tab 1-9 |
-| `Cmd+N` | New Window |
+| `Cmd/Ctrl + T` | New Tab |
+| `Cmd/Ctrl + W` | Close Tab |
+| `Cmd/Ctrl + Shift + T` | Reopen Closed Tab |
+| `Cmd/Ctrl + L` | Focus URL Bar |
+| `Cmd/Ctrl + R` | Refresh Page |
+| `Cmd/Ctrl + Shift + R` | Hard Refresh |
+| `Cmd/Ctrl + D` | Bookmark Page |
+| `Cmd/Ctrl + F` | Find in Page |
+| `Cmd/Ctrl + N` | New Window |
+| `Cmd/Ctrl + Tab` | Next Tab |
+| `Cmd/Ctrl + Shift + Tab` | Previous Tab |
+| `Cmd/Ctrl + 1-9` | Switch to Tab 1-9 |
+| `Cmd/Ctrl + 0` | Switch to Last Tab |
+| `Cmd/Ctrl + +/-` | Zoom In/Out |
+| `Escape` | Stop Loading / Close Panels |
 
 ---
 
-## Troubleshooting
+## 📁 Project Structure
 
-### Build Fails with Signing Errors
-Make sure to use the environment variable:
-```bash
-CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac
 ```
-
-### "Cannot be opened because the developer cannot be verified"
-Use the terminal command:
-```bash
-xattr -cr /path/to/YarvixBrowser.app
-```
-
-### App Crashes on Launch
-1. Delete the app's data folder:
-   ```bash
-   rm -rf ~/Library/Application\ Support/YarvixBrowser
-   ```
-2. Rebuild the app
-3. Try again
-
-### Icons Not Showing
-Make sure you have icon files in the `build` folder:
-- `build/icon.icns` (macOS)
-- `build/icon.png` (source, 1024x1024)
-
-Generate icons from PNG:
-```bash
-npm run generate-icons
+your-browser/
+├── main.js              # Electron main process (app lifecycle, IPC)
+├── renderer.js          # Browser UI logic (tabs, navigation, etc.)
+├── index.html           # Main browser window HTML
+├── homepage.html        # New tab page
+├── style.css            # All browser styles (stealth theme)
+├── credentialManager.js # Password encryption & storage
+├── adblock.js           # Ad blocker logic
+├── package.json         # Project config & dependencies
+├── icon.svg             # Browser icon
+├── alert-image.svg      # Alert overlay icon
+├── build/               # Build resources (icons)
+│   └── icons/
+│       └── icon.icns    # macOS app icon
+├── dist/                # Built applications
+└── scripts/             # Build scripts
 ```
 
 ---
 
-## Important Notes
+## 🔧 Technical Details
 
-- This build is for **personal use only** on your own Mac
-- The app is **not signed** and **not notarized** - it won't pass Gatekeeper checks automatically
-- Do **not distribute** unsigned apps to others
-- For distribution, you need an Apple Developer account ($99/year) for proper signing
+### Password Security
+
+YarvixBrowser uses industry-standard encryption for password storage:
+
+- **Primary**: Electron's `safeStorage` API (macOS Keychain)
+- **Fallback**: AES-256-GCM encryption with per-file keys
+- **Authentication**: Touch ID / system authentication before autofill
+
+### Ad Blocker
+
+The built-in ad blocker provides:
+
+- YouTube video ad skipping (skip button clicks + fast-forward)
+- Overlay ad removal
+- Display ad blocking
+- Custom whitelist per site
+
+### Content Protection
+
+The browser can prevent screen capture:
+
+```javascript
+// Enable content protection
+mainWindow.setContentProtection(true);
+```
 
 ---
 
-## License
+## 📝 License
 
-Private project by Yash Vyas.
+This project is private and developed by **Yash Vyas**.
+
+---
+
+## 🤝 Contributing
+
+This is a personal project. For suggestions or improvements, please contact:
+
+- **Author**: Yash Vyas
+- **Email**: dev.yashvyas@gmail.com
+
+---
+
+<div align="center">
+
+**Built with ❤️ by Yash Vyas**
+
+</div>
+
