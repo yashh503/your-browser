@@ -177,12 +177,23 @@ class TabManager {
         // Set as active
         activeTabId = tabId;
 
-        // Update URL bar
+        // Update URL bar and focus it for new tabs
+        const urlInput = document.getElementById('url-input');
+
+        // Check if loading homepage - show empty URL bar for homepage
+        const isHomepage = url.includes('homepage.html') || url === settings.homePage;
         try {
-            document.getElementById('url-input').value = webview.getURL() || url;
+            urlInput.value = isHomepage ? '' : (webview.getURL() || url);
         } catch (e) {
-            document.getElementById('url-input').value = url;
+            urlInput.value = isHomepage ? '' : url;
         }
+
+        // Focus the URL input and select all text for immediate typing
+        // Use setTimeout to ensure the DOM is ready and webview doesn't steal focus
+        setTimeout(() => {
+            urlInput.focus();
+            urlInput.select();
+        }, 100);
 
         return tabId;
     }
@@ -284,6 +295,11 @@ class TabManager {
 
     addToHistory(url, title) {
         if (!url || url === 'about:blank') return;
+
+        // Don't store app's static pages in history (homepage and other local files)
+        if (url.startsWith('file://')) {
+            return;
+        }
 
         const entry = {
             url,
