@@ -59,10 +59,6 @@
 
 ---
 
-## 📸 Screenshots
-
-> *Add your screenshots here by placing images in the `docs/` folder*
-
 ### Browser Interface
 
 ![Browser Interface](docs/home.png)
