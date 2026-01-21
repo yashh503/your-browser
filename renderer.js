@@ -707,6 +707,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const wv = tabManager.getActiveWebview();
             if (!wv) return;
 
+            // Hide suggestions
+            hideUrlSuggestions();
+
             const isUrl = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/.test(input) ||
                           input.startsWith('localhost') ||
                           /^(\d{1,3}\.){3}\d{1,3}/.test(input);
@@ -717,13 +720,23 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 wv.loadURL(settings.searchEngine + encodeURIComponent(input));
             }
+
+            // Blur the input after navigation
+            e.target.blur();
         }
     });
 
     // URL input focus - select all text
     document.getElementById('url-input').addEventListener('focus', (e) => {
         e.target.select();
+        // Show suggestions if there's input
+        if (e.target.value.trim()) {
+            showUrlSuggestions(e.target.value);
+        }
     });
+
+    // URL suggestions functionality
+    setupUrlSuggestions();
 
     // Bookmark current page
     document.getElementById('bookmark-btn').addEventListener('click', () => {
@@ -1651,6 +1664,347 @@ function renderBookmarks() {
             document.getElementById('bookmarks-panel').classList.add('hidden');
         });
     });
+}
+
+// ========================================
+// URL SUGGESTIONS
+// ========================================
+
+/**
+ * URL Suggestions State
+ */
+const suggestionState = {
+    selectedIndex: -1,
+    suggestions: [],
+    isVisible: false
+};
+
+/**
+ * Setup URL suggestions functionality
+ */
+function setupUrlSuggestions() {
+    const urlInput = document.getElementById('url-input');
+    const suggestionsContainer = document.getElementById('url-suggestions');
+
+    // Input event - show suggestions as user types
+    urlInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim();
+        if (query.length > 0) {
+            showUrlSuggestions(query);
+        } else {
+            hideUrlSuggestions();
+        }
+    });
+
+    // Keyboard navigation for suggestions
+    urlInput.addEventListener('keydown', (e) => {
+        if (!suggestionState.isVisible) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                navigateSuggestion(1);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                navigateSuggestion(-1);
+                break;
+            case 'Enter':
+                if (suggestionState.selectedIndex >= 0) {
+                    e.preventDefault();
+                    selectSuggestion(suggestionState.selectedIndex);
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                hideUrlSuggestions();
+                break;
+            case 'Tab':
+                if (suggestionState.selectedIndex >= 0) {
+                    e.preventDefault();
+                    selectSuggestion(suggestionState.selectedIndex);
+                }
+                break;
+        }
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#url-bar-wrapper')) {
+            hideUrlSuggestions();
+        }
+    });
+
+    // Blur event - hide suggestions (with delay for click handling)
+    urlInput.addEventListener('blur', () => {
+        setTimeout(() => {
+            if (!document.activeElement?.closest('#url-suggestions')) {
+                hideUrlSuggestions();
+            }
+        }, 150);
+    });
+}
+
+/**
+ * Show URL suggestions based on query
+ */
+function showUrlSuggestions(query) {
+    const suggestionsContainer = document.getElementById('url-suggestions');
+    const suggestionsList = document.getElementById('url-suggestions-list');
+
+    if (!suggestionsContainer || !suggestionsList) return;
+
+    const lowerQuery = query.toLowerCase();
+
+    // Get suggestions from history and bookmarks
+    const suggestions = [];
+
+    // Add matching history items
+    history.forEach(item => {
+        const urlMatch = item.url.toLowerCase().includes(lowerQuery);
+        const titleMatch = (item.title || '').toLowerCase().includes(lowerQuery);
+
+        if (urlMatch || titleMatch) {
+            suggestions.push({
+                type: 'history',
+                url: item.url,
+                title: item.title || item.url,
+                timestamp: item.timestamp,
+                matchScore: urlMatch && titleMatch ? 3 : (urlMatch ? 2 : 1)
+            });
+        }
+    });
+
+    // Add matching bookmarks
+    bookmarks.forEach(item => {
+        const urlMatch = item.url.toLowerCase().includes(lowerQuery);
+        const titleMatch = (item.title || '').toLowerCase().includes(lowerQuery);
+
+        if (urlMatch || titleMatch) {
+            // Check if already in suggestions (from history)
+            const existingIndex = suggestions.findIndex(s => s.url === item.url);
+            if (existingIndex >= 0) {
+                // Upgrade to bookmark type (higher priority)
+                suggestions[existingIndex].type = 'bookmark';
+                suggestions[existingIndex].matchScore += 2;
+            } else {
+                suggestions.push({
+                    type: 'bookmark',
+                    url: item.url,
+                    title: item.title || item.url,
+                    timestamp: item.timestamp,
+                    matchScore: (urlMatch && titleMatch ? 3 : (urlMatch ? 2 : 1)) + 2
+                });
+            }
+        }
+    });
+
+    // Sort by match score (higher is better), then by recency
+    suggestions.sort((a, b) => {
+        if (b.matchScore !== a.matchScore) {
+            return b.matchScore - a.matchScore;
+        }
+        return (b.timestamp || 0) - (a.timestamp || 0);
+    });
+
+    // Limit to top 8 suggestions
+    const topSuggestions = suggestions.slice(0, 8);
+
+    // Add search suggestion at the end if query doesn't look like a URL
+    const isUrl = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/.test(query) ||
+                  query.startsWith('localhost') ||
+                  /^(\d{1,3}\.){3}\d{1,3}/.test(query);
+
+    if (!isUrl && query.length > 0) {
+        topSuggestions.push({
+            type: 'search',
+            url: settings.searchEngine + encodeURIComponent(query),
+            title: `Search for "${query}"`,
+            searchQuery: query
+        });
+    }
+
+    // Store suggestions in state
+    suggestionState.suggestions = topSuggestions;
+    suggestionState.selectedIndex = -1;
+
+    if (topSuggestions.length === 0) {
+        hideUrlSuggestions();
+        return;
+    }
+
+    // Render suggestions
+    suggestionsList.innerHTML = topSuggestions.map((suggestion, index) => {
+        const iconHtml = getSuggestionIcon(suggestion);
+        const titleHtml = highlightMatch(suggestion.title, query);
+        const urlHtml = suggestion.type !== 'search' ? highlightMatch(suggestion.url, query) : '';
+        const typeLabel = getSuggestionTypeLabel(suggestion.type);
+
+        return `
+            <div class="url-suggestion-item ${suggestion.type === 'search' ? 'search-suggestion' : ''}"
+                 data-index="${index}"
+                 data-url="${escapeHtml(suggestion.url)}">
+                <div class="url-suggestion-icon">${iconHtml}</div>
+                <div class="url-suggestion-content">
+                    <div class="url-suggestion-title">${titleHtml}</div>
+                    ${urlHtml ? `<div class="url-suggestion-url">${urlHtml}</div>` : ''}
+                </div>
+                <span class="url-suggestion-type">${typeLabel}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Add click handlers
+    suggestionsList.querySelectorAll('.url-suggestion-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const index = parseInt(item.dataset.index);
+            selectSuggestion(index);
+        });
+
+        item.addEventListener('mouseenter', () => {
+            updateSelectedSuggestion(parseInt(item.dataset.index));
+        });
+    });
+
+    // Show the suggestions container
+    suggestionsContainer.classList.remove('hidden');
+    suggestionState.isVisible = true;
+}
+
+/**
+ * Hide URL suggestions
+ */
+function hideUrlSuggestions() {
+    const suggestionsContainer = document.getElementById('url-suggestions');
+    if (suggestionsContainer) {
+        suggestionsContainer.classList.add('hidden');
+    }
+    suggestionState.isVisible = false;
+    suggestionState.selectedIndex = -1;
+    suggestionState.suggestions = [];
+}
+
+/**
+ * Navigate through suggestions with arrow keys
+ */
+function navigateSuggestion(direction) {
+    const newIndex = suggestionState.selectedIndex + direction;
+    const maxIndex = suggestionState.suggestions.length - 1;
+
+    if (newIndex < -1) {
+        updateSelectedSuggestion(maxIndex);
+    } else if (newIndex > maxIndex) {
+        updateSelectedSuggestion(-1);
+    } else {
+        updateSelectedSuggestion(newIndex);
+    }
+
+    // Update URL input with selected suggestion's URL
+    if (suggestionState.selectedIndex >= 0) {
+        const suggestion = suggestionState.suggestions[suggestionState.selectedIndex];
+        const urlInput = document.getElementById('url-input');
+        if (suggestion.type === 'search') {
+            // Don't change input for search suggestions
+        } else {
+            urlInput.value = suggestion.url;
+        }
+    }
+}
+
+/**
+ * Update which suggestion is selected
+ */
+function updateSelectedSuggestion(index) {
+    suggestionState.selectedIndex = index;
+
+    const items = document.querySelectorAll('.url-suggestion-item');
+    items.forEach((item, i) => {
+        item.classList.toggle('selected', i === index);
+    });
+}
+
+/**
+ * Select a suggestion and navigate to it
+ */
+function selectSuggestion(index) {
+    const suggestion = suggestionState.suggestions[index];
+    if (!suggestion) return;
+
+    const urlInput = document.getElementById('url-input');
+    const wv = tabManager.getActiveWebview();
+
+    if (!wv) return;
+
+    // Update input and navigate
+    urlInput.value = suggestion.type === 'search' ? suggestion.searchQuery || '' : suggestion.url;
+    hideUrlSuggestions();
+
+    wv.loadURL(suggestion.url);
+    urlInput.blur();
+}
+
+/**
+ * Get icon HTML for suggestion type
+ */
+function getSuggestionIcon(suggestion) {
+    switch (suggestion.type) {
+        case 'bookmark':
+            return '<i class="fas fa-star" style="color: var(--accent-color);"></i>';
+        case 'history':
+            return '<i class="fas fa-clock-rotate-left"></i>';
+        case 'search':
+            return '<i class="fas fa-magnifying-glass"></i>';
+        default:
+            return '<i class="fas fa-globe"></i>';
+    }
+}
+
+/**
+ * Get label for suggestion type
+ */
+function getSuggestionTypeLabel(type) {
+    switch (type) {
+        case 'bookmark':
+            return 'Bookmark';
+        case 'history':
+            return 'History';
+        case 'search':
+            return 'Search';
+        default:
+            return '';
+    }
+}
+
+/**
+ * Highlight matching text in string
+ */
+function highlightMatch(text, query) {
+    if (!text || !query) return escapeHtml(text || '');
+
+    const escapedText = escapeHtml(text);
+    const escapedQuery = escapeHtml(query);
+    const lowerText = escapedText.toLowerCase();
+    const lowerQuery = escapedQuery.toLowerCase();
+
+    const index = lowerText.indexOf(lowerQuery);
+    if (index === -1) return escapedText;
+
+    const before = escapedText.substring(0, index);
+    const match = escapedText.substring(index, index + escapedQuery.length);
+    const after = escapedText.substring(index + escapedQuery.length);
+
+    return `${before}<span class="url-suggestion-match">${match}</span>${after}`;
+}
+
+/**
+ * Escape HTML characters
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ========================================

@@ -35,12 +35,17 @@
         </button>
       </div>
 
-      <div id="url-bar-container">
-        <i class="fas fa-shield-halved" id="security-icon"></i>
-        <input type="text" id="url-input" placeholder="Search or enter URL" spellcheck="false" />
-        <button id="bookmark-btn" title="Bookmark this page">
-          <i class="far fa-star"></i>
-        </button>
+      <div id="url-bar-wrapper">
+        <div id="url-bar-container">
+          <i class="fas fa-shield-halved" id="security-icon"></i>
+          <input type="text" id="url-input" placeholder="Search or enter URL" spellcheck="false" autocomplete="off" />
+          <button id="bookmark-btn" title="Bookmark this page">
+            <i class="far fa-star"></i>
+          </button>
+        </div>
+        <div id="url-suggestions" class="hidden">
+          <div id="url-suggestions-list"></div>
+        </div>
       </div>
 
       <div id="toolbar-buttons">
