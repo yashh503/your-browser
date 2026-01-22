@@ -1195,6 +1195,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         handleSettingChange(data.data);
                     } else if (data.action === 'clear-all-data') {
                         handleClearAllData(data.data);
+                    } else if (data.action === 'change-password') {
+                        handlePasswordChange(data.data);
                     }
                 }
             } catch (e) {
@@ -1260,6 +1262,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log('[YarvixBrowser] All browser data cleared' + (clearSiteData ? ' including site data' : ''));
     }
+
+    function handlePasswordChange(data) {
+        const { currentPassword, newPassword } = data;
+        ipcRenderer.send('password-change', { currentPassword, newPassword });
+    }
+
+    // Listen for password change result from main process
+    ipcRenderer.on('password-change-result', (event, result) => {
+        // Forward result to the homepage webview
+        const activeTab = tabs.find(t => t.id === activeTabId);
+        if (activeTab && activeTab.webview) {
+            activeTab.webview.executeJavaScript(`
+                window.postMessage({
+                    type: 'password-change-result',
+                    success: ${result.success},
+                    error: ${result.error ? `'${result.error}'` : 'null'}
+                }, '*');
+            `);
+        }
+    });
 
     // Make setupWebviewListeners available globally for new tabs
     window.setupWebviewListeners = setupWebviewListeners;

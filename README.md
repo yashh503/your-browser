@@ -20,11 +20,29 @@
 
 | Feature | Description |
 |---------|-------------|
+| **Browser Lock** | Password-protected startup with self-destruct after 3 failed attempts |
 | **Screen Capture Detection** | Automatically detects when screen is being recorded or screenshots are taken |
 | **Content Protection** | Prevents your browser window from appearing in screenshots/screen recordings |
 | **Ad Blocker** | Built-in YouTube ad blocker that removes video ads, overlay ads, and display ads |
 | **Whitelist Management** | Whitelist specific sites to disable ad blocking when needed |
 | **Service Worker Management** | Clear corrupted service worker data to fix website issues |
+
+### 🛡️ Browser Lock (Self-Destruct Mode)
+
+YarvixBrowser includes a powerful security feature that protects your browsing data:
+
+| Feature | Description |
+|---------|-------------|
+| **Login Screen** | Disguised as a normal login form with username field (for visual deception) |
+| **Password Protection** | Browser requires password to open - keeps your data safe |
+| **3-Strike Rule** | Enter wrong password 3 times and ALL data gets wiped automatically |
+| **Complete Data Wipe** | Deletes history, bookmarks, saved passwords, cookies, cache - everything |
+| **Auto-Reset** | After wipe, password resets to default for fresh start |
+| **Change Password** | Update your password anytime from Settings > Security |
+
+> **Default Password**: `KHULETOJHA`
+>
+> **Warning**: After 3 wrong attempts, all your browsing data will be permanently deleted. The browser will restart fresh with default settings.
 
 ### 🔑 Password Manager
 
@@ -133,7 +151,9 @@ your-browser/
 ├── renderer.js          # Browser UI logic (tabs, navigation, etc.)
 ├── index.html           # Main browser window HTML
 ├── homepage.html        # New tab page
+├── lockscreen.html      # Password lock screen (disguised as login)
 ├── style.css            # All browser styles (stealth theme)
+├── passwordProtection.js # Browser lock & self-destruct logic
 ├── credentialManager.js # Password encryption & storage
 ├── adblock.js           # Ad blocker logic
 ├── package.json         # Project config & dependencies
@@ -150,7 +170,16 @@ your-browser/
 
 ## 🔧 Technical Details
 
-### Password Security
+### Browser Lock Security
+
+The browser lock feature provides military-grade protection:
+
+- **SHA-256 Password Hashing** - Your password is never stored in plain text
+- **Self-Destruct Mechanism** - 3 failed attempts triggers complete data wipe
+- **Disguised Login Screen** - Looks like a normal login form with username field (does nothing, just for show)
+- **Persistent Lock State** - Closing the lock screen without password quits the app
+
+### Password Manager Security
 
 YarvixBrowser uses industry-standard encryption for password storage:
 

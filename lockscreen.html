@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yarvix Browser - Locked</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+      }
+
+      :root {
+          --bg-primary: #0c0c0e;
+          --bg-secondary: #161618;
+          --bg-tertiary: #1c1c1f;
+          --text-primary: #f4f4f5;
+          --text-secondary: #a1a1aa;
+          --border-color: #27272a;
+          --accent-color: #8b5cf6;
+          --accent-hover: #7c3aed;
+          --accent-glow: rgba(139, 92, 246, 0.3);
+          --error-color: #ef4444;
+          --error-glow: rgba(239, 68, 68, 0.3);
+      }
+
+      body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          -webkit-app-region: drag;
+      }
+
+      .lock-container {
+          -webkit-app-region: no-drag;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          padding: 48px;
+          width: 400px;
+          text-align: center;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+          from {
+              opacity: 0;
+              transform: scale(0.95);
+          }
+          to {
+              opacity: 1;
+              transform: scale(1);
+          }
+      }
+
+      .lock-icon {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 24px;
+          background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 40px var(--accent-glow);
+      }
+
+      .lock-icon svg {
+          width: 40px;
+          height: 40px;
+          fill: white;
+      }
+
+      .lock-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 24px;
+          font-weight: 600;
+          margin-bottom: 8px;
+          color: var(--text-primary);
+      }
+
+      .lock-subtitle {
+          font-size: 14px;
+          color: var(--text-secondary);
+          margin-bottom: 32px;
+      }
+
+      .password-input-container {
+          position: relative;
+          margin-bottom: 16px;
+      }
+
+      .password-input {
+          width: 100%;
+          padding: 16px 48px 16px 16px;
+          background: var(--bg-tertiary);
+          border: 2px solid var(--border-color);
+          border-radius: 12px;
+          color: var(--text-primary);
+          font-size: 16px;
+          font-family: inherit;
+          outline: none;
+          transition: border-color 0.2s, box-shadow 0.2s;
+          letter-spacing: 2px;
+      }
+
+
+      .password-input:focus {
+          border-color: var(--accent-color);
+          box-shadow: 0 0 0 3px var(--accent-glow);
+      }
+
+      .password-input.error {
+          border-color: var(--error-color);
+          box-shadow: 0 0 0 3px var(--error-glow);
+          animation: shake 0.5s ease;
+      }
+
+      @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20%, 60% { transform: translateX(-8px); }
+          40%, 80% { transform: translateX(8px); }
+      }
+
+      .toggle-password {
+          position: absolute;
+          right: 12px;
+          top: 80%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 8px;
+          color: var(--text-secondary);
+          transition: color 0.2s;
+      }
+
+      .toggle-password:hover {
+          color: var(--text-primary);
+      }
+
+      .toggle-password svg {
+          width: 20px;
+          height: 20px;
+          fill: currentColor;
+      }
+
+      .unlock-btn {
+          width: 100%;
+          padding: 16px;
+          background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+          border: none;
+          border-radius: 12px;
+          color: white;
+          font-size: 16px;
+          font-weight: 600;
+          font-family: inherit;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .unlock-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px var(--accent-glow);
+      }
+
+      .unlock-btn:active {
+          transform: translateY(0);
+      }
+
+      .unlock-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+      }
+
+      .error-message {
+          margin-top: 16px;
+          padding: 12px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 8px;
+          color: var(--error-color);
+          font-size: 14px;
+          display: none;
+      }
+
+      .error-message.visible {
+          display: block;
+          animation: fadeIn 0.3s ease;
+      }
+
+      .attempts-warning {
+          margin-top: 12px;
+          font-size: 12px;
+          color: var(--text-secondary);
+      }
+
+      .attempts-warning.danger {
+          color: var(--error-color);
+          font-weight: 500;
+      }
+
+      /* Wipe confirmation overlay */
+      .wipe-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.9);
+          display: none;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          -webkit-app-region: no-drag;
+      }
+
+      .wipe-overlay.visible {
+          display: flex;
+      }
+
+      .wipe-content {
+          background: var(--bg-secondary);
+          border: 1px solid var(--error-color);
+          border-radius: 20px;
+          padding: 48px;
+          width: 450px;
+          text-align: center;
+          animation: fadeIn 0.3s ease;
+      }
+
+      .wipe-icon {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 24px;
+          background: var(--text-primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: pulse 1s ease infinite;
+      }
+
+      @keyframes pulse {
+          0%, 100% { box-shadow: 0 0 0 0 var(--error-glow); }
+          50% { box-shadow: 0 0 0 20px transparent; }
+      }
+
+      .wipe-icon svg {
+          width: 40px;
+          height: 40px;
+          fill: white;
+      }
+
+      .wipe-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 24px;
+          font-weight: 600;
+          color: var(--error-color);
+          margin-bottom: 16px;
+      }
+
+      .wipe-message {
+          font-size: 14px;
+          color: var(--text-secondary);
+          margin-bottom: 24px;
+          line-height: 1.6;
+      }
+
+      .wipe-progress {
+          margin-top: 24px;
+      }
+
+      .wipe-progress-bar {
+          width: 100%;
+          height: 6px;
+          background: var(--bg-tertiary);
+          border-radius: 3px;
+          overflow: hidden;
+      }
+
+      .wipe-progress-fill {
+          width: 0%;
+          height: 100%;
+          background: var(--error-color);
+          border-radius: 3px;
+          transition: width 0.3s ease;
+      }
+
+      .wipe-status {
+          margin-top: 12px;
+          font-size: 13px;
+          color: var(--text-secondary);
+      }
+
+      /* Background decoration */
+      .bg-gradient {
+          position: fixed;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: radial-gradient(circle at center, var(--accent-glow) 0%, transparent 50%);
+          opacity: 0.3;
+          pointer-events: none;
+          z-index: -1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-gradient"></div>
+
+    <div class="lock-container">
+      <div class="lock-icon">
+        <img src="icon.svg" alt="Capture alert" style="width:70px; height: 70px;"/>
+        <!-- <svg viewBox="0 0 24 24">
+          <path
+            d="M12 1C8.676 1 6 3.676 6 7v2H4v14h16V9h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v2H8V7c0-2.276 1.724-4 4-4zm0 10c1.1 0 2 .9 2 2 0 .74-.4 1.38-1 1.73V19h-2v-2.27c-.6-.35-1-.99-1-1.73 0-1.1.9-2 2-2z"
+          />
+        </svg> -->
+      </div>
+      <h1 class="lock-title">Login</h1>
+      <p class="lock-subtitle">Enter your Creds to unlock Browser</p>
+
+      <form id="unlock-form">
+        <div class="password-input-container">
+          <input
+            type="text"
+            class="password-input"
+            placeholder="Enter Username"
+            style="margin-bottom: 8px;"
+          />
+          <input
+            type="password"
+            id="password"
+            class="password-input"
+            placeholder="Enter Password"
+            autocomplete="off"
+            autofocus
+          />
+          <button type="button" class="toggle-password" id="toggle-password">
+            <svg id="eye-icon" viewBox="0 0 24 24">
+              <path
+                d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+              />
+            </svg>
+          </button>
+        </div>
+        <button type="submit" class="unlock-btn" id="unlock-btn">Unlock</button>
+      </form>
+
+      <div class="error-message" id="error-message"></div>
+      <!-- <div class="attempts-warning" id="attempts-warning"></div> -->
+    </div>
+
+    <div class="wipe-overlay" id="wipe-overlay">
+      <div class="wipe-content">
+        <div class="wipe-icon">
+          <img src="icon.svg" alt="Capture alert" style="width:70px; height: 70px;"/>
+        </div>
+        <h2 class="wipe-title">Security Breach Detected</h2>
+        <p class="wipe-message">
+          Maximum Password attempts exceeded.<br />
+          All browser data is being wiped for security.
+        </p>
+        <div class="wipe-progress">
+          <div class="wipe-progress-bar">
+            <div class="wipe-progress-fill" id="wipe-progress-fill"></div>
+          </div>
+          <div class="wipe-status" id="wipe-status">
+            Preparing to wipe data...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require('electron');
+
+      const form = document.getElementById('unlock-form');
+      const passwordInput = document.getElementById('password');
+      const unlockBtn = document.getElementById('unlock-btn');
+      const errorMessage = document.getElementById('error-message');
+      const attemptsWarning = document.getElementById('attempts-warning');
+      const togglePassword = document.getElementById('toggle-password');
+      const eyeIcon = document.getElementById('eye-icon');
+      const wipeOverlay = document.getElementById('wipe-overlay');
+      const wipeProgressFill = document.getElementById('wipe-progress-fill');
+      const wipeStatus = document.getElementById('wipe-status');
+
+      let isPasswordVisible = false;
+
+      // Toggle password visibility
+      togglePassword.addEventListener('click', () => {
+          isPasswordVisible = !isPasswordVisible;
+          passwordInput.type = isPasswordVisible ? 'text' : 'password';
+          eyeIcon.innerHTML = isPasswordVisible
+              ? '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>'
+              : '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+      });
+
+      // Handle form submission
+      form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const password = passwordInput.value;
+
+          if (!password) {
+              showError('Please enter your Password');
+              return;
+          }
+
+          unlockBtn.disabled = true;
+          unlockBtn.textContent = 'Verifying...';
+
+          ipcRenderer.send('password-verify', password);
+      });
+
+      // Handle verification result
+      ipcRenderer.on('password-result', (event, result) => {
+          unlockBtn.disabled = false;
+          unlockBtn.textContent = 'Unlock';
+
+          if (result.success) {
+              // Unlock successful - main process will show browser
+              document.body.style.opacity = '0';
+              document.body.style.transition = 'opacity 0.3s ease';
+          } else if (result.shouldWipe) {
+              // Maximum attempts - show wipe overlay
+              showWipeOverlay();
+          } else {
+              // Wrong password
+              showError(result.message);
+              updateAttemptsWarning(result.remainingAttempts);
+              passwordInput.classList.add('error');
+              passwordInput.value = '';
+              passwordInput.focus();
+
+              setTimeout(() => {
+                  passwordInput.classList.remove('error');
+              }, 500);
+          }
+      });
+
+      // Handle wipe progress
+      ipcRenderer.on('wipe-progress', (event, { progress, status }) => {
+          wipeProgressFill.style.width = `${progress}%`;
+          wipeStatus.textContent = status;
+      });
+
+      // Handle wipe complete
+      ipcRenderer.on('wipe-complete', () => {
+          wipeStatus.textContent = 'Data wiped. Restarting browser...';
+          wipeProgressFill.style.width = '100%';
+      });
+
+      function showError(message) {
+          errorMessage.textContent = message;
+          errorMessage.classList.add('visible');
+      }
+
+      function updateAttemptsWarning(remaining) {
+          if (remaining <= 2) {
+              attemptsWarning.textContent = `⚠️ Warning: ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining before data wipe`;
+              attemptsWarning.classList.add('danger');
+          } else {
+              attemptsWarning.textContent = `${remaining} attempts remaining`;
+              attemptsWarning.classList.remove('danger');
+          }
+      }
+
+      function showWipeOverlay() {
+          wipeOverlay.classList.add('visible');
+          ipcRenderer.send('start-data-wipe');
+      }
+
+      // Get initial attempts info
+      ipcRenderer.send('get-remaining-attempts');
+
+      ipcRenderer.on('remaining-attempts', (event, { remaining }) => {
+          if (remaining < 3) {
+              updateAttemptsWarning(remaining);
+          }
+      });
+
+      // Focus password input on load
+      passwordInput.focus();
+    </script>
+  </body>
+</html>

@@ -641,6 +641,111 @@
           font-size: 11px;
       }
 
+      /* Security Section Styles */
+      .settings-group.security-section {
+          background: rgba(139, 92, 246, 0.05);
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          border-radius: 12px;
+          margin: 8px 16px 16px;
+          padding: 16px 20px;
+      }
+
+      .security-section .settings-group-title {
+          color: var(--accent-color);
+          margin-bottom: 12px;
+      }
+
+      .security-section .settings-group-title i {
+          margin-right: 8px;
+      }
+
+      .password-change-section {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+      }
+
+      .password-inputs {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+      }
+
+      .password-field {
+          width: 100%;
+          padding: 12px 14px;
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          color: var(--text-primary);
+          font-size: 14px;
+          font-family: inherit;
+          outline: none;
+          transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .password-field:focus {
+          border-color: var(--accent-color);
+          box-shadow: 0 0 0 3px var(--accent-glow);
+      }
+
+      .password-field::placeholder {
+          color: var(--text-secondary);
+          opacity: 0.7;
+      }
+
+      .password-message {
+          font-size: 13px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          display: none;
+      }
+
+      .password-message.success {
+          display: block;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          color: #10b981;
+      }
+
+      .password-message.error {
+          display: block;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #ef4444;
+      }
+
+      .change-password-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 20px;
+          background: var(--accent-color);
+          border: none;
+          border-radius: 10px;
+          color: white;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+      }
+
+      .change-password-btn:hover {
+          background: var(--accent-hover);
+          transform: translateY(-1px);
+      }
+
+      .change-password-btn:active {
+          transform: scale(0.98);
+      }
+
+      .change-password-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+      }
+
       /* Danger Zone Styles */
       .settings-group.danger-zone {
           background: rgba(239, 68, 68, 0.05);
@@ -933,6 +1038,28 @@
               <div class="setting-description">Show quick access bookmarks</div>
             </div>
             <div class="toggle" id="bookmarks-toggle"></div>
+          </div>
+        </div>
+
+        <!-- Security - Password Change -->
+        <div class="settings-group security-section">
+          <div class="settings-group-title"><i class="fas fa-shield-alt"></i> Security</div>
+          <div class="password-change-section">
+            <div class="setting-item">
+              <div>
+                <span class="setting-label">Browser Lock Password</span>
+                <div class="setting-description">Change the password required to open the browser</div>
+              </div>
+            </div>
+            <div class="password-inputs" id="password-inputs">
+              <input type="password" id="current-password" class="password-field" placeholder="Current password" />
+              <input type="password" id="new-password" class="password-field" placeholder="New password" />
+              <input type="password" id="confirm-password" class="password-field" placeholder="Confirm new password" />
+            </div>
+            <div class="password-message" id="password-message"></div>
+            <button class="change-password-btn" id="change-password-btn">
+              <i class="fas fa-key"></i> Change Password
+            </button>
           </div>
         </div>
 
@@ -1264,6 +1391,93 @@
                       window.location.reload();
                   }, 1500);
               }, 500);
+          }
+      });
+
+      // Password Change Handler
+      const changePasswordBtn = document.getElementById('change-password-btn');
+      const currentPasswordInput = document.getElementById('current-password');
+      const newPasswordInput = document.getElementById('new-password');
+      const confirmPasswordInput = document.getElementById('confirm-password');
+      const passwordMessage = document.getElementById('password-message');
+
+      function showPasswordMessage(message, isError = true) {
+          passwordMessage.textContent = message;
+          passwordMessage.className = 'password-message ' + (isError ? 'error' : 'success');
+      }
+
+      function clearPasswordMessage() {
+          passwordMessage.className = 'password-message';
+          passwordMessage.textContent = '';
+      }
+
+      function clearPasswordFields() {
+          currentPasswordInput.value = '';
+          newPasswordInput.value = '';
+          confirmPasswordInput.value = '';
+      }
+
+      changePasswordBtn.addEventListener('click', () => {
+          const currentPassword = currentPasswordInput.value;
+          const newPassword = newPasswordInput.value;
+          const confirmPassword = confirmPasswordInput.value;
+
+          // Validation
+          if (!currentPassword) {
+              showPasswordMessage('Please enter your current password');
+              currentPasswordInput.focus();
+              return;
+          }
+
+          if (!newPassword) {
+              showPasswordMessage('Please enter a new password');
+              newPasswordInput.focus();
+              return;
+          }
+
+          if (newPassword.length < 4) {
+              showPasswordMessage('New password must be at least 4 characters');
+              newPasswordInput.focus();
+              return;
+          }
+
+          if (newPassword !== confirmPassword) {
+              showPasswordMessage('New passwords do not match');
+              confirmPasswordInput.focus();
+              return;
+          }
+
+          if (currentPassword === newPassword) {
+              showPasswordMessage('New password must be different from current password');
+              newPasswordInput.focus();
+              return;
+          }
+
+          // Disable button during operation
+          changePasswordBtn.disabled = true;
+          changePasswordBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Changing...';
+          clearPasswordMessage();
+
+          // Send password change request to browser
+          sendToBrowser('change-password', {
+              currentPassword: currentPassword,
+              newPassword: newPassword
+          });
+      });
+
+      // Listen for password change result
+      window.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'password-change-result') {
+              changePasswordBtn.disabled = false;
+              changePasswordBtn.innerHTML = '<i class="fas fa-key"></i> Change Password';
+
+              if (event.data.success) {
+                  showPasswordMessage('Password changed successfully!', false);
+                  clearPasswordFields();
+                  setTimeout(clearPasswordMessage, 3000);
+              } else {
+                  showPasswordMessage(event.data.error || 'Failed to change password');
+              }
           }
       });
 

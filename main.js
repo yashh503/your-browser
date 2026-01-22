@@ -5,6 +5,7 @@ const os = require('os');
 const { execSync } = require('child_process');
 const { AdBlocker, AD_DOMAINS, BLOCK_PATTERNS } = require('./adblock');
 const { CredentialManager, FORM_DETECTION_SCRIPT } = require('./credentialManager');
+const { PasswordProtection } = require('./passwordProtection');
 
 // Track last authentication time for session-based auth (like Chrome)
 let lastAuthTime = 0;
@@ -15,6 +16,11 @@ const adBlocker = new AdBlocker();
 
 // Initialize Credential Manager (will be set after app is ready)
 let credentialManager = null;
+
+// Initialize Password Protection (will be set after app is ready)
+let passwordProtection = null;
+let lockWindow = null;
+let isUnlocked = false;
 
 // Use a real Chrome User-Agent to make websites work normally
 const CHROME_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -156,6 +162,31 @@ function setupDownloadHandler(sess) {
   });
 }
 
+function createLockWindow() {
+  lockWindow = new BrowserWindow({
+    width: 500,
+    height: 600,
+    resizable: false,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 12 },
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  lockWindow.setContentProtection(true);
+  lockWindow.loadFile('lockscreen.html');
+
+  lockWindow.on('closed', () => {
+    lockWindow = null;
+    // If not unlocked and lock window is closed, quit the app
+    if (!isUnlocked) {
+      app.quit();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -222,9 +253,16 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // Initialize Password Protection
+  passwordProtection = new PasswordProtection(app.getPath('userData'));
+  console.log('[YarvixBrowser] Password Protection initialized');
+
   // Initialize Credential Manager with user data path
   credentialManager = new CredentialManager(app.getPath('userData'));
   console.log('[YarvixBrowser] Credential Manager initialized');
+
+  // Show lock screen first
+  createLockWindow();
 
   // Configure the default session to behave like a normal browser
   const defaultSession = session.defaultSession;
@@ -289,7 +327,8 @@ app.whenReady().then(async () => {
     callback(0); // 0 means success, -2 means reject, -3 means use default behavior
   });
 
-  createWindow();
+  // Don't create main window here - wait for password unlock
+  // createWindow() will be called after successful password verification
 
   // Listen for keyboard shortcuts from ALL webContents (including webviews)
   // This is the reliable way to capture shortcuts when focus is inside a webview
@@ -372,12 +411,173 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) {
+    // If unlocked, show main window; otherwise show lock screen
+    if (isUnlocked) {
+      createWindow();
+    } else {
+      createLockWindow();
+    }
+  }
 });
 
 // IPC Handler for creating new window
 ipcMain.on('create-new-window', () => {
-  createWindow();
+  if (isUnlocked) {
+    createWindow();
+  }
+});
+
+// ========================================
+// PASSWORD PROTECTION IPC HANDLERS
+// ========================================
+
+// Verify password
+ipcMain.on('password-verify', (_event, password) => {
+  if (!passwordProtection) return;
+
+  const result = passwordProtection.verifyPassword(password);
+
+  if (result.success) {
+    isUnlocked = true;
+    // Close lock window and open main browser
+    if (lockWindow && !lockWindow.isDestroyed()) {
+      lockWindow.webContents.send('password-result', result);
+      setTimeout(() => {
+        lockWindow.close();
+        createWindow();
+      }, 300);
+    }
+  } else if (result.shouldWipe) {
+    // Send result to lock window to show wipe overlay
+    if (lockWindow && !lockWindow.isDestroyed()) {
+      lockWindow.webContents.send('password-result', result);
+    }
+  } else {
+    // Wrong password - send result back
+    if (lockWindow && !lockWindow.isDestroyed()) {
+      lockWindow.webContents.send('password-result', result);
+    }
+  }
+});
+
+// Get remaining attempts
+ipcMain.on('get-remaining-attempts', () => {
+  if (!passwordProtection) return;
+
+  const remaining = passwordProtection.getRemainingAttempts();
+  if (lockWindow && !lockWindow.isDestroyed()) {
+    lockWindow.webContents.send('remaining-attempts', { remaining });
+  }
+});
+
+// Start data wipe
+ipcMain.on('start-data-wipe', async () => {
+  if (!lockWindow || lockWindow.isDestroyed()) return;
+
+  const userDataPath = app.getPath('userData');
+
+  try {
+    // Step 1: Clearing browser history and bookmarks
+    lockWindow.webContents.send('wipe-progress', { progress: 10, status: 'Clearing browser history...' });
+    await new Promise(r => setTimeout(r, 300));
+
+    // Step 2: Clear credentials
+    lockWindow.webContents.send('wipe-progress', { progress: 25, status: 'Clearing saved passwords...' });
+    if (credentialManager) {
+      credentialManager.clearAllCredentials();
+    }
+    await new Promise(r => setTimeout(r, 300));
+
+    // Step 3: Clear site data (cookies, localStorage, etc.)
+    lockWindow.webContents.send('wipe-progress', { progress: 40, status: 'Clearing site data...' });
+    try {
+      await session.defaultSession.clearStorageData({
+        storages: [
+          'cookies',
+          'localstorage',
+          'sessionstorage',
+          'indexdb',
+          'websql',
+          'serviceworkers',
+          'cachestorage'
+        ]
+      });
+      await session.defaultSession.clearCache();
+      await session.defaultSession.clearAuthCache();
+    } catch (err) {
+      console.warn('[DataWipe] Error clearing session data:', err.message);
+    }
+    await new Promise(r => setTimeout(r, 300));
+
+    // Step 4: Delete credential files
+    lockWindow.webContents.send('wipe-progress', { progress: 60, status: 'Deleting credential files...' });
+    const filesToDelete = [
+      'credentials.enc',
+      'never-save-sites.json',
+      '.credential-key'
+    ];
+    for (const file of filesToDelete) {
+      const filePath = path.join(userDataPath, file);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.warn(`[DataWipe] Error deleting ${file}:`, err.message);
+      }
+    }
+    await new Promise(r => setTimeout(r, 300));
+
+    // Step 5: Clear service worker and database folders
+    lockWindow.webContents.send('wipe-progress', { progress: 75, status: 'Clearing cached data...' });
+    const foldersToClean = ['ServiceWorker', 'databases', 'GPUCache', 'Cache'];
+    for (const folder of foldersToClean) {
+      const folderPath = path.join(userDataPath, folder);
+      try {
+        if (fs.existsSync(folderPath)) {
+          fs.rmSync(folderPath, { recursive: true, force: true });
+        }
+      } catch (err) {
+        console.warn(`[DataWipe] Error deleting ${folder}:`, err.message);
+      }
+    }
+    await new Promise(r => setTimeout(r, 300));
+
+    // Step 6: Reset password to default
+    lockWindow.webContents.send('wipe-progress', { progress: 90, status: 'Resetting password...' });
+    passwordProtection.resetToDefault();
+    await new Promise(r => setTimeout(r, 300));
+
+    // Step 7: Complete
+    lockWindow.webContents.send('wipe-progress', { progress: 100, status: 'Data wipe complete. Restarting...' });
+    lockWindow.webContents.send('wipe-complete');
+
+    // Restart app after a short delay
+    setTimeout(() => {
+      app.relaunch();
+      app.exit(0);
+    }, 2000);
+
+  } catch (error) {
+    console.error('[DataWipe] Error during data wipe:', error);
+    lockWindow.webContents.send('wipe-progress', { progress: 100, status: 'Error during wipe. Restarting...' });
+    setTimeout(() => {
+      app.relaunch();
+      app.exit(0);
+    }, 2000);
+  }
+});
+
+// Change password (called from settings)
+ipcMain.on('password-change', (_event, { currentPassword, newPassword }) => {
+  if (!passwordProtection) return;
+
+  const result = passwordProtection.changePassword(currentPassword, newPassword);
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('password-change-result', result);
+  }
 });
 ipcMain.on("close-app", () => {
     app.quit();
